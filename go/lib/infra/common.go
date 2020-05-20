@@ -25,6 +25,7 @@ import (
 	"github.com/scionproto/scion/go/lib/ctrl"
 	"github.com/scionproto/scion/go/lib/ctrl/ack"
 	"github.com/scionproto/scion/go/lib/ctrl/cert_mgmt"
+	"github.com/scionproto/scion/go/lib/ctrl/drkey_mgmt"
 	"github.com/scionproto/scion/go/lib/ctrl/ifid"
 	"github.com/scionproto/scion/go/lib/ctrl/path_mgmt"
 	"github.com/scionproto/scion/go/lib/ctrl/seg"
@@ -152,6 +153,10 @@ const (
 	HPSegReply
 	HPCfgRequest
 	HPCfgReply
+	DRKeyLvl1Request
+	DRKeyLvl1Reply
+	DRKeyLvl2Request
+	DRKeyLvl2Reply
 )
 
 func (mt MessageType) String() string {
@@ -208,6 +213,14 @@ func (mt MessageType) String() string {
 		return "HPCfgRequest"
 	case HPCfgReply:
 		return "HPCfgReply"
+	case DRKeyLvl1Request:
+		return "DRKeyLvl1Request"
+	case DRKeyLvl1Reply:
+		return "DRKeyLvl1Reply"
+	case DRKeyLvl2Request:
+		return "DRKeyLvl2Request"
+	case DRKeyLvl2Reply:
+		return "DRKeyLvl2Reply"
 	default:
 		return fmt.Sprintf("Unknown (%d)", mt)
 	}
@@ -269,6 +282,14 @@ func (mt MessageType) MetricLabel() string {
 		return "hp_cfg_req"
 	case HPCfgReply:
 		return "hp_cfg_push"
+	case DRKeyLvl1Request:
+		return "drkey_lvl1_req"
+	case DRKeyLvl1Reply:
+		return "drkey_lvl1_push"
+	case DRKeyLvl2Request:
+		return "drkey_lvl2_req"
+	case DRKeyLvl2Reply:
+		return "drkey_lvl2_push"
 	default:
 		return "unknown_mt"
 	}
@@ -361,6 +382,15 @@ type Messenger interface {
 	SendChainIssueReply(ctx context.Context, msg *cert_mgmt.ChainIssRep, a net.Addr,
 		id uint64) error
 	SendBeacon(ctx context.Context, msg *seg.Beacon, a net.Addr, id uint64) error
+	// TODO(juagargi) rename these functions:
+	GetDRKeyLvl1(ctx context.Context, msg *drkey_mgmt.Lvl1Req, a net.Addr,
+		id uint64) (*drkey_mgmt.Lvl1Rep, error)
+	SendDRKeyLvl1Reply(ctx context.Context, msg *drkey_mgmt.Lvl1Rep, a net.Addr,
+		id uint64) error
+	GetDRKeyLvl2(ctx context.Context, msg *drkey_mgmt.Lvl2Req, a net.Addr,
+		id uint64) (*drkey_mgmt.Lvl2Rep, error)
+	SendDRKeyLvl2Reply(ctx context.Context, msg *drkey_mgmt.Lvl2Rep, a net.Addr,
+		id uint64) error
 	UpdateSigner(signer Signer, types []MessageType)
 	UpdateVerifier(verifier Verifier)
 	AddHandler(msgType MessageType, h Handler)
@@ -377,6 +407,8 @@ type ResponseWriter interface {
 	SendIfStateInfoReply(ctx context.Context, msg *path_mgmt.IFStateInfos) error
 	SendHPSegReply(ctx context.Context, msg *path_mgmt.HPSegReply) error
 	SendHPCfgReply(ctx context.Context, msg *path_mgmt.HPCfgReply) error
+	SendDRKeyLvl1Reply(ctx context.Context, msg *drkey_mgmt.Lvl1Rep) error
+	SendDRKeyLvl2Reply(ctx context.Context, msg *drkey_mgmt.Lvl2Rep) error
 }
 
 func ResponseWriterFromContext(ctx context.Context) (ResponseWriter, bool) {
