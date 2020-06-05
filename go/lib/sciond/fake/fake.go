@@ -13,6 +13,8 @@ import (
 	"github.com/scionproto/scion/go/lib/addr"
 	"github.com/scionproto/scion/go/lib/common"
 	"github.com/scionproto/scion/go/lib/ctrl/path_mgmt"
+	"github.com/scionproto/scion/go/lib/drkey"
+	"github.com/scionproto/scion/go/lib/drkey/protocol"
 	"github.com/scionproto/scion/go/lib/sciond"
 	"github.com/scionproto/scion/go/lib/serrors"
 	"github.com/scionproto/scion/go/lib/snet"
@@ -225,6 +227,49 @@ func (c connector) RevNotification(ctx context.Context,
 	panic("not implemented")
 }
 
+func (c connector) DRKeyGetLvl2Key(_ context.Context, meta drkey.Lvl2Meta,
+	valTime uint32) (drkey.Lvl2Key, error) {
+
+	lvl1Key, err := getLvl1(meta.SrcIA, meta.DstIA, valTime)
+	if err != nil {
+		return drkey.Lvl2Key{}, common.NewBasicError("Error getting lvl1 key", err)
+	}
+
+	derProt, found := protocol.KnownDerivations[meta.Protocol]
+	if !found {
+		return drkey.Lvl2Key{}, fmt.Errorf("No derivation found for protocol \"%s\"", meta.Protocol)
+	}
+	return derProt.DeriveLvl2(meta, lvl1Key)
+
+}
+
 func (c connector) Close(ctx context.Context) error {
 	return nil
+}
+
+func getLvl1(srcIA, dstIA addr.IA, valTime uint32) (drkey.Lvl1Key, error) {
+	keyDuration := time.Hour * 24
+	validSince := uint32(time.Unix(int64(valTime), 0).Truncate(keyDuration).Unix())
+	duration := uint32(keyDuration / time.Second)
+	epoch := drkey.NewEpoch(validSince, validSince+duration)
+
+	meta := drkey.SVMeta{
+		Epoch: epoch,
+	}
+	asSecret := []byte{0, 1, 2, 3, 4, 5, 6, 7, 0, 1, 2, 3, 4, 5, 6, 7}
+	sv, err := drkey.DeriveSV(meta, asSecret)
+	if err != nil {
+		return drkey.Lvl1Key{}, common.NewBasicError("Error getting secret value", err)
+	}
+
+	lvl1, err := protocol.DeriveLvl1(drkey.Lvl1Meta{
+		Epoch: epoch,
+		SrcIA: srcIA,
+		DstIA: dstIA,
+	}, sv)
+	if err != nil {
+		return drkey.Lvl1Key{}, common.NewBasicError("Error deriving Lvl1 key", err)
+	}
+
+	return lvl1, nil
 }

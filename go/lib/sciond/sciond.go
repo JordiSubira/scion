@@ -37,7 +37,9 @@ import (
 
 	"github.com/scionproto/scion/go/lib/addr"
 	"github.com/scionproto/scion/go/lib/common"
+	"github.com/scionproto/scion/go/lib/ctrl/drkey_mgmt"
 	"github.com/scionproto/scion/go/lib/ctrl/path_mgmt"
+	"github.com/scionproto/scion/go/lib/drkey"
 	"github.com/scionproto/scion/go/lib/sciond/internal/metrics"
 	"github.com/scionproto/scion/go/lib/serrors"
 	"github.com/scionproto/scion/go/lib/snet"
@@ -101,6 +103,8 @@ type Connector interface {
 	RevNotificationFromRaw(ctx context.Context, b []byte) (*RevReply, error)
 	// RevNotification sends a RevocationInfo message to SCIOND.
 	RevNotification(ctx context.Context, sRevInfo *path_mgmt.SignedRevInfo) (*RevReply, error)
+	// DRKeyGetLvl2Key sends a DRKey Lvl2Key request to SCIOND
+	DRKeyGetLvl2Key(ctx context.Context, meta drkey.Lvl2Meta, valTime uint32) (drkey.Lvl2Key, error)
 	// Close shuts down the connection to a SCIOND server.
 	Close(ctx context.Context) error
 }
@@ -303,6 +307,41 @@ func (c *conn) RevNotification(ctx context.Context,
 	}
 	metrics.Revocations.Inc(metrics.OkSuccess)
 	return reply.RevReply, nil
+}
+
+func (c *conn) DRKeyGetLvl2Key(ctx context.Context, meta drkey.Lvl2Meta,
+	valTime uint32) (drkey.Lvl2Key, error) {
+
+	conn, err := c.connect(ctx)
+	if err != nil {
+		metrics.DRKeyLvl2Requests.Inc(errorToPrometheusLabel(err))
+		return drkey.Lvl2Key{}, serrors.Wrap(ErrUnableToConnect, err)
+	}
+
+	reply, err := roundTrip(
+		&Pld{
+			TraceId: tracing.IDFromCtx(ctx),
+			Which:   proto.SCIONDMsg_Which_drkeyLvl2Req,
+			DRKeyLvl2Req: &drkey_mgmt.Lvl2Req{
+				Protocol:   meta.Protocol,
+				ReqType:    uint8(meta.KeyType),
+				ValTimeRaw: valTime,
+				SrcIARaw:   meta.SrcIA.IAInt(),
+				DstIARaw:   meta.DstIA.IAInt(),
+				SrcHost:    drkey_mgmt.NewHost(meta.SrcHost),
+				DstHost:    drkey_mgmt.NewHost(meta.DstHost),
+			},
+		},
+		conn,
+	)
+	if err != nil {
+		metrics.DRKeyLvl2Requests.Inc(errorToPrometheusLabel(err))
+		return drkey.Lvl2Key{}, serrors.WrapStr("[sciond-API] Failed to send DRKeyLvl2Req", err)
+	}
+	metrics.DRKeyLvl2Requests.Inc(metrics.OkSuccess)
+
+	lvl2rep := reply.DRKeyLvl2Rep
+	return lvl2rep.ToKey(meta), nil
 }
 
 func (c *conn) Close(_ context.Context) error {

@@ -15,6 +15,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/scionproto/scion/go/lib/addr"
+	"github.com/scionproto/scion/go/lib/drkey"
 	"github.com/scionproto/scion/go/lib/sciond"
 	"github.com/scionproto/scion/go/lib/sciond/fake"
 	"github.com/scionproto/scion/go/lib/snet"
@@ -183,6 +184,27 @@ func TestRevNotificationFromRaw(t *testing.T) {
 func TestRevNotification(t *testing.T) {
 	c := fake.New(&fake.Script{})
 	assert.PanicsWithValue(t, "not implemented", func() { c.RevNotification(nil, nil) })
+}
+
+func TestDRKeyGetLvl2Key(t *testing.T) {
+	c := fake.New(&fake.Script{})
+	srcIA, _ := addr.IAFromString("1-ff00:0:110")
+	dstIA, _ := addr.IAFromString("1-ff00:0:111")
+	srcHost := addr.HostFromIPStr("127.0.0.1")
+	dstHost := addr.HostFromIPStr("127.0.0.2")
+	now := uint32(0)
+	meta := drkey.Lvl2Meta{
+		KeyType:  drkey.Host2Host,
+		Protocol: "piskes",
+		SrcIA:    srcIA,
+		DstIA:    dstIA,
+		SrcHost:  srcHost,
+		DstHost:  dstHost,
+	}
+	tgtKey := xtest.MustParseHexString("19a506e004f23dfefc819c50d69ebece")
+	lvl2Key, err := c.DRKeyGetLvl2Key(context.Background(), meta, now)
+	require.NoError(t, err)
+	assert.EqualValues(t, tgtKey, lvl2Key.Key)
 }
 
 func TestClose(t *testing.T) {

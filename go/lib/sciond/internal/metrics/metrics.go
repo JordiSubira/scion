@@ -30,6 +30,7 @@ const (
 	subsystemIFInfo     = "if_info"
 	subsystemSVCInfo    = "service_info"
 	subsystemRevocation = "revocation"
+	subsystemDRKey      = "drkey"
 )
 
 // Result values
@@ -65,6 +66,8 @@ var (
 	IFInfos = newIFInfo()
 	// SVCInfos contains metrics for SVC info requests.
 	SVCInfos = newSVCInfo()
+	// DRKeyLvl2Requests contains metrics for DRKeyLvl2 requests.
+	DRKeyLvl2Requests = newDRKeyLvl2Request()
 	// Conns contains metrics for connections to SCIOND.
 	Conns = newConn()
 )
@@ -118,5 +121,12 @@ func newIFInfo() Request {
 	return Request{
 		count: prom.NewCounterVecWithLabels(Namespace, subsystemIFInfo, "requests_total",
 			"The amount of IF info requests sent.", resultLabel{}),
+	}
+}
+
+func newDRKeyLvl2Request() Request {
+	return Request{
+		count: prom.NewCounterVecWithLabels(Namespace, subsystemDRKey, "requests_total",
+			"The amount of DRKeyLvl2 requests sent.", resultLabel{}),
 	}
 }
