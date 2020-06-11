@@ -133,7 +133,7 @@ func (cfg *DRKeyDBConf) Sample(dst io.Writer, path config.Path, ctx config.CtxMa
 
 // ConfigName is the key in the toml file.
 func (cfg *DRKeyDBConf) ConfigName() string {
-	return "drkeyDB"
+	return "drkey_db"
 }
 
 // newDB is an internal function that returns a new drkey DB. Call this with a pointer to

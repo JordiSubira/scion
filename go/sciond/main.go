@@ -30,6 +30,7 @@ import (
 	"github.com/opentracing/opentracing-go"
 
 	"github.com/scionproto/scion/go/lib/common"
+	"github.com/scionproto/scion/go/lib/drkeystorage"
 	"github.com/scionproto/scion/go/lib/env"
 	"github.com/scionproto/scion/go/lib/fatal"
 	"github.com/scionproto/scion/go/lib/infra"
@@ -49,6 +50,7 @@ import (
 	"github.com/scionproto/scion/go/lib/topology"
 	"github.com/scionproto/scion/go/proto"
 	"github.com/scionproto/scion/go/sciond/internal/config"
+	"github.com/scionproto/scion/go/sciond/internal/drkey"
 	"github.com/scionproto/scion/go/sciond/internal/fetcher"
 	"github.com/scionproto/scion/go/sciond/internal/servers"
 )
@@ -166,6 +168,24 @@ func realMain() int {
 			VerifierFactory:  verificationFactory{Provider: trustStore},
 			NextQueryCleaner: segfetcher.NextQueryCleaner{PathDB: pathDB},
 		},
+	}
+
+	drkeyEnabled := cfg.DRKeyDB.Connection() != ""
+	log.Info("DRKey", "enabled", drkeyEnabled)
+	if drkeyEnabled {
+		drkeyDB, err := cfg.DRKeyDB.NewLvl2DB()
+		if err != nil {
+			log.Crit("Unable to initialize drkey storage", "err", err)
+			return 1
+		}
+		defer drkeyDB.Close()
+		drkeyStore := drkey.NewClientStore(itopo.Get().IA(), drkeyDB, msger)
+		drkeyCleaner := periodic.Start(drkeystorage.NewStoreCleaner(drkeyStore),
+			time.Hour, 10*time.Minute)
+		defer drkeyCleaner.Stop()
+		handlers[proto.SCIONDMsg_Which_drkeyLvl2Req] = &servers.DrKeyLvl2RequestHandler{
+			Store: drkeyStore,
+		}
 	}
 	cleaner := periodic.Start(pathdb.NewCleaner(pathDB, "sd_segments"),
 		300*time.Second, 295*time.Second)

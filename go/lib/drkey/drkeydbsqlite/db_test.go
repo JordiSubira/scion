@@ -74,11 +74,13 @@ func TestDRKeyLvl1(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, drkeyLvl1.Key, newKey.Key)
 
-	rows, err := db.RemoveOutdatedLvl1Keys(ctx, util.TimeToSecs(time.Now().Add(-timeOffset*time.Second)))
+	rows, err := db.RemoveOutdatedLvl1Keys(ctx,
+		util.TimeToSecs(time.Now().Add(-timeOffset*time.Second)))
 	require.NoError(t, err)
 	require.EqualValues(t, 0, rows)
 
-	rows, err = db.RemoveOutdatedLvl1Keys(ctx, util.TimeToSecs(time.Now().Add(2*timeOffset*time.Second)))
+	rows, err = db.RemoveOutdatedLvl1Keys(ctx,
+		util.TimeToSecs(time.Now().Add(2*timeOffset*time.Second)))
 	require.NoError(t, err)
 	require.EqualValues(t, 1, rows)
 
@@ -129,11 +131,13 @@ func TestDRKeyLvl2(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, drkeyLvl2.Key, newKey.Key)
 
-	rows, err := db.RemoveOutdatedLvl2Keys(ctx, util.TimeToSecs(time.Now().Add(-timeOffset*time.Second)))
+	rows, err := db.RemoveOutdatedLvl2Keys(ctx,
+		util.TimeToSecs(time.Now().Add(-timeOffset*time.Second)))
 	require.NoError(t, err)
 	require.EqualValues(t, 0, rows)
 
-	rows, err = db.RemoveOutdatedLvl2Keys(ctx, util.TimeToSecs(time.Now().Add(2*timeOffset*time.Second)))
+	rows, err = db.RemoveOutdatedLvl2Keys(ctx,
+		util.TimeToSecs(time.Now().Add(2*timeOffset*time.Second)))
 	require.NoError(t, err)
 	require.EqualValues(t, 1, rows)
 }
@@ -181,6 +185,8 @@ func TestGetMentionedASes(t *testing.T) {
 		ia("1-ff00:0:111"),
 		ia("2-ff00:0:211"),
 	}
+
+	require.Equal(t, expected, list)
 
 	list, err = db.GetValidLvl1SrcASes(ctx, 3)
 	require.NoError(t, err)

@@ -43,7 +43,8 @@ const (
         EpochBegin  INTEGER NOT NULL,
         EpochEnd    INTEGER NOT NULL,
 		Key 		TEXT NOT NULL,
-		PRIMARY KEY (Protocol, Type, SrcIsdID, SrcAsID, DstIsdID, DstAsID, SrcHostIP, DstHostIP, EpochBegin)
+		PRIMARY KEY (Protocol, Type, SrcIsdID, SrcAsID,` +
+		` DstIsdID, DstAsID, SrcHostIP, DstHostIP, EpochBegin)
 	);`
 )
 
@@ -87,7 +88,9 @@ AND EpochBegin<=? AND ?<EpochEnd
 // GetLvl2Key takes a source, destination and additional ISD-AS, a source, destination and
 // additional host, and a timestamp at which the DRKey should be valid and
 // returns a second level DRKey of the request type
-func (b *Lvl2Backend) GetLvl2Key(ctx context.Context, key drkey.Lvl2Meta, valTime uint32) (drkey.Lvl2Key, error) {
+func (b *Lvl2Backend) GetLvl2Key(ctx context.Context, key drkey.Lvl2Meta,
+	valTime uint32) (drkey.Lvl2Key, error) {
+
 	var epochBegin int
 	var epochEnd int
 	var bytes []byte

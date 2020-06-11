@@ -715,7 +715,8 @@ func (m *Messenger) GetDRKeyLvl1(ctx context.Context, msg *drkey_mgmt.Lvl1Req, a
 	replyCtrlPld, err :=
 		m.getFallbackRequester(infra.DRKeyLvl1Request).Request(ctx, pld, a, false)
 	if err != nil {
-		return nil, common.NewBasicError("[Messenger] Request error", err, "req_type", infra.DRKeyLvl1Request)
+		return nil, common.NewBasicError("[Messenger] Request error", err,
+			"req_type", infra.DRKeyLvl1Request)
 	}
 	_, replyMsg, err := Validate(replyCtrlPld)
 	if err != nil {
@@ -755,7 +756,8 @@ func (m *Messenger) GetDRKeyLvl2(ctx context.Context, msg *drkey_mgmt.Lvl2Req, a
 	replyCtrlPld, err :=
 		m.getFallbackRequester(infra.DRKeyLvl2Request).Request(ctx, pld, a, false)
 	if err != nil {
-		return nil, common.NewBasicError("[Messenger] Request error", err, "req_type", infra.DRKeyLvl2Request)
+		return nil, common.NewBasicError("[Messenger] Request error", err,
+			"req_type", infra.DRKeyLvl2Request)
 	}
 	_, replyMsg, err := Validate(replyCtrlPld)
 	if err != nil {

@@ -136,7 +136,8 @@ func (rw *QUICResponseWriter) SendHPCfgReply(ctx context.Context, msg *path_mgmt
 	return rw.sendMessage(ctrlPld)
 }
 
-func (rw *QUICResponseWriter) SendDRKeyLvl1Reply(ctx context.Context, msg *drkey_mgmt.Lvl1Rep) error {
+func (rw *QUICResponseWriter) SendDRKeyLvl1Reply(ctx context.Context,
+	msg *drkey_mgmt.Lvl1Rep) error {
 	go func() {
 		defer log.HandlePanic()
 		<-ctx.Done()
@@ -149,7 +150,8 @@ func (rw *QUICResponseWriter) SendDRKeyLvl1Reply(ctx context.Context, msg *drkey
 	return rw.sendMessage(ctrlPld)
 }
 
-func (rw *QUICResponseWriter) SendDRKeyLvl2Reply(ctx context.Context, msg *drkey_mgmt.Lvl2Rep) error {
+func (rw *QUICResponseWriter) SendDRKeyLvl2Reply(ctx context.Context,
+	msg *drkey_mgmt.Lvl2Rep) error {
 	go func() {
 		defer log.HandlePanic()
 		<-ctx.Done()

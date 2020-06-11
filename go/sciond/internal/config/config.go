@@ -20,6 +20,7 @@ import (
 	"time"
 
 	"github.com/scionproto/scion/go/lib/config"
+	"github.com/scionproto/scion/go/lib/drkeystorage"
 	"github.com/scionproto/scion/go/lib/env"
 	"github.com/scionproto/scion/go/lib/log"
 	"github.com/scionproto/scion/go/lib/pathstorage"
@@ -44,7 +45,9 @@ type Config struct {
 	TrustDB  truststorage.TrustDBConf `toml:"trust_db,omitempty"`
 	// PathDB contains the configuration for the PathDB connection.
 	PathDB pathstorage.PathDBConf `toml:"path_db,omitempty"`
-	SD     SDConfig               `toml:"sd,omitempty"`
+	// DRKeyDB contains the DRKey DB configuration.
+	DRKeyDB drkeystorage.DRKeyDBConf `toml:"drkey_db,omitempty"`
+	SD      SDConfig                 `toml:"sd,omitempty"`
 }
 
 func (cfg *Config) InitDefaults() {
@@ -56,6 +59,7 @@ func (cfg *Config) InitDefaults() {
 		&cfg.Tracing,
 		&cfg.TrustDB,
 		&cfg.PathDB,
+		&cfg.DRKeyDB,
 		&cfg.SD,
 	)
 }
@@ -68,6 +72,7 @@ func (cfg *Config) Validate() error {
 		&cfg.Metrics,
 		&cfg.TrustDB,
 		&cfg.PathDB,
+		&cfg.DRKeyDB,
 		&cfg.SD,
 	)
 }
@@ -81,6 +86,7 @@ func (cfg *Config) Sample(dst io.Writer, path config.Path, _ config.CtxMap) {
 		&cfg.Tracing,
 		&cfg.TrustDB,
 		&cfg.PathDB,
+		&cfg.DRKeyDB,
 		&cfg.SD,
 	)
 }

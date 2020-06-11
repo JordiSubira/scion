@@ -10,6 +10,7 @@ go_library(
     visibility = ["//go/sciond:__subpackages__"],
     deps = [
         "//go/lib/config:go_default_library",
+        "//go/lib/drkeystorage:go_default_library",
         "//go/lib/env:go_default_library",
         "//go/lib/log:go_default_library",
         "//go/lib/pathstorage:go_default_library",

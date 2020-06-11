@@ -25,6 +25,7 @@ import (
 	"github.com/scionproto/scion/go/lib/ctrl"
 	"github.com/scionproto/scion/go/lib/ctrl/ack"
 	"github.com/scionproto/scion/go/lib/ctrl/cert_mgmt"
+	"github.com/scionproto/scion/go/lib/ctrl/drkey_mgmt"
 	"github.com/scionproto/scion/go/lib/ctrl/path_mgmt"
 	"github.com/scionproto/scion/go/lib/infra"
 	"github.com/scionproto/scion/go/lib/infra/messenger"
@@ -183,6 +184,36 @@ func (m *Messenger) GetSegs(ctx context.Context, msg *path_mgmt.SegReq, a net.Ad
 		return nil, serrors.New("[tcp-msger] Type assertion failed",
 			"msg", replyMsg, "type", "*path_mgmt.SegReply")
 	}
+}
+
+// GetDRKeyLvl2 requests to the remote server the DRKeyLvl2 key which
+// matches the payload content and return a verified reply.
+func (m *Messenger) GetDRKeyLvl2(ctx context.Context, msg *drkey_mgmt.Lvl2Req, a net.Addr,
+	id uint64) (*drkey_mgmt.Lvl2Rep, error) {
+
+	logger := log.FromCtx(ctx)
+	pld, err := ctrl.NewDRKeyMgmtPld(msg, nil, &ctrl.Data{ReqId: id})
+	if err != nil {
+		return nil, err
+	}
+	logger.Debug("[tcp-msger] Sending request", "req_type", infra.DRKeyLvl2Request,
+		"msg_id", id, "request", msg, "peer", a)
+	replyCtrlPld, err := m.Client.Request(ctx, pld, a)
+	if err != nil {
+		return nil, serrors.WrapStr("[tcp-msger] request error", err,
+			"req_type", infra.DRKeyLvl2Request)
+	}
+	_, replyMsg, err := messenger.Validate(replyCtrlPld)
+	if err != nil {
+		return nil, serrors.WrapStr("[tcp-msger] reply validation failed", err)
+	}
+	reply, ok := replyMsg.(*drkey_mgmt.Lvl2Rep)
+	if !ok {
+		return nil, serrors.New("[tcp-msger] Type assertion failed",
+			"msg", reply, "type", "*drkey_mgmt.Lvl2Rep")
+	}
+	logger.Debug("[tcp-msger] Received reply")
+	return reply, nil
 }
 
 func (m *Messenger) AddHandler(msgType infra.MessageType, h infra.Handler) {

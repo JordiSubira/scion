@@ -32,6 +32,7 @@ const (
 	subsystemIFInfo     = "if_info"
 	subsystemSVCInfo    = "service_info"
 	subsystemRevocation = "revocation"
+	subsystemDRKey      = "drkey"
 )
 
 // Revocation sources
@@ -64,6 +65,8 @@ var (
 	IFInfos = newIFInfo()
 	// SVCInfos contains metrics for SVC info requests.
 	SVCInfos = newSVCInfo()
+	// DRKeyLvl2Requests contains metrics for DRKeyLvl2 requests.
+	DRKeyLvl2Requests = newDRKeyLvl2Request()
 )
 
 type resultLabel struct {
@@ -225,6 +228,16 @@ func newIFInfo() Request {
 			"The amount of IF info requests received.", resultLabel{}),
 		latency: prom.NewHistogramVecWithLabels(Namespace, subsystemIFInfo,
 			"request_duration_seconds", "Time to handle IF info requests.",
+			resultLabel{}, prom.DefaultLatencyBuckets),
+	}
+}
+
+func newDRKeyLvl2Request() Request {
+	return Request{
+		count: prom.NewCounterVecWithLabels(Namespace, subsystemDRKey, "requests_total",
+			"The amount of DRKeyLvl2 requests sent.", resultLabel{}),
+		latency: prom.NewHistogramVecWithLabels(Namespace, subsystemDRKey,
+			"request_duration_seconds", "Time to handle DRKey requests.",
 			resultLabel{}, prom.DefaultLatencyBuckets),
 	}
 }

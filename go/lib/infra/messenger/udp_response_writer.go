@@ -69,9 +69,11 @@ func (rw *UDPResponseWriter) SendHPCfgReply(ctx context.Context, msg *path_mgmt.
 	return rw.Messenger.SendHPCfgReply(ctx, msg, rw.Remote, rw.ID)
 }
 
-func (rw *UDPResponseWriter) SendDRKeyLvl1Reply(ctx context.Context, msg *drkey_mgmt.Lvl1Rep) error {
+func (rw *UDPResponseWriter) SendDRKeyLvl1Reply(ctx context.Context,
+	msg *drkey_mgmt.Lvl1Rep) error {
 	return rw.Messenger.SendDRKeyLvl1Reply(ctx, msg, rw.Remote, rw.ID)
 }
-func (rw *UDPResponseWriter) SendDRKeyLvl2Reply(ctx context.Context, msg *drkey_mgmt.Lvl2Rep) error {
+func (rw *UDPResponseWriter) SendDRKeyLvl2Reply(ctx context.Context,
+	msg *drkey_mgmt.Lvl2Rep) error {
 	return rw.Messenger.SendDRKeyLvl2Reply(ctx, msg, rw.Remote, rw.ID)
 }
