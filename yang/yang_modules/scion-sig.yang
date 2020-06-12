@@ -1,0 +1,63 @@
+module scion-sig {
+  namespace "urn:scion:scion-sig";
+  prefix "sc-sig";
+
+  import ietf-inet-types{
+    prefix "inet";
+  }
+
+  import scion-types{
+    prefix "sc-ty";
+  }
+
+  organization
+    "SCION group";
+
+  contact
+  "Some contact here";
+
+  description 
+  "This module contains a useful collection of data defining 
+   common types and enumerations present within the SCION 
+   architecture.
+  ";
+
+  revision 2019-11-15 {
+      description "First revision for proposal.";
+  }
+
+  container sig{
+    container ases{
+      list as{
+        description
+        "
+        ";
+
+        key isd-as;
+
+        leaf isd-as{
+          description 
+          "
+          The ISD-AS ...
+          ";
+          type sc-ty:isd-as-type;
+        }
+
+        leaf-list nets{
+          description
+          "
+          ";
+          type inet:ip-prefix;
+        }
+      }
+
+      leaf config-version{
+        description
+        "
+        ";
+        mandatory true;
+        type uint64;
+      }
+    }//end container ases
+  }//end container sig
+}
