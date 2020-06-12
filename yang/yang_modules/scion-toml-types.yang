@@ -1,0 +1,27 @@
+module scion-toml-types {
+  namespace "urn:scion:scion-toml-types";
+  prefix "toml-ty";
+
+  organization
+  "SCION group";
+
+  contact
+  "Some contact here";
+
+  description 
+  "This module ...
+    ";
+
+  revision 2019-11-01 {
+      description "First revision for proposal.";
+  }
+
+  identity trust-db-backend-base{
+    description "Base identity for trust DB backend";
+  }
+
+  identity trust-db-sqlite{
+    description "Sqlite type for trust DB backend ";
+    base trust-db-backend-base;
+  }
+}

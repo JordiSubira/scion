@@ -1,0 +1,133 @@
+module scion-toml-sciond{
+	namespace "urn:scion:scion-toml-sciond";
+    prefix "toml-sd";
+
+    import scion-toml-commons{
+    	prefix "toml-commons";
+    }
+
+    import scion-types{
+        prefix "sc-ty";
+    }
+
+    organization
+    "SCION group";
+
+    contact
+    "Some contact here";
+
+    description 
+    "This module ...
+    ";
+
+    revision 2019-11-01 {
+        description "First revision for proposal.";
+    }
+
+    container sciond{
+        uses toml-commons:config-commons-top;
+
+        container sd{
+
+            leaf reliable{
+                type string;
+                description
+                "
+                Address to listen on via the reliable socket protocol.
+                ";
+
+                default "/run/shm/sciond/default.sock";
+            }
+
+            leaf unix{
+                type string;
+                description
+                "
+                Address to listen on for normal unixgram messages.
+                ";
+
+                default "/run/shm/sciond/default-unix.sock";
+            }
+
+            leaf socket-file-mode{
+                type sc-ty:file-mode-string;
+                description
+                "
+                File permissions of both the Reliable and Unix socket files, in octal.
+                ";
+
+                default "0770";
+            }
+
+            leaf delete-socket{
+                type boolean;
+                description
+                "
+                If set to true, the socket is removed before being created.
+                ";
+
+                default false;
+            }
+
+            container public{
+                description
+                    "
+                    Local address to listen on for SCION messages (if bind is not set),
+                    and to send out messages to other nodes.
+                    ";
+                leaf isd{
+                    type sc-ty:isd-as-type;
+
+                    mandatory true;
+                }
+
+                uses sc-ty:address-port;
+
+            }
+
+            container bind{
+                description
+                "
+                If set, Bind is the preferred local address to listen on for SCION messages.
+                ";
+
+                leaf isd{
+                    type sc-ty:isd-as-type;
+                }
+
+                uses sc-ty:address-port{
+                    refine address{
+                      mandatory false;
+                    }
+                    refine l4-port{
+                      mandatory false;
+                    }
+                  }
+            }
+
+            leaf query-interval{
+                type sc-ty:time-string;
+                description
+                "
+                The time after which segments for a destination are refetched (in minutes).
+                ";
+
+                default "5m";
+            }
+
+            container path-db{
+                description "Configuration for the path database.";
+
+                uses toml-commons:db-config;
+            }
+
+            container rev-cache{
+                description "Configuration for the rev-cache backend.";
+
+                uses toml-commons:rev-cache-config;
+                
+            }
+            
+        }//end container sd
+    }//end container sciond
+}

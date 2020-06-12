@@ -1,0 +1,168 @@
+module scion-toml-beacon-server{
+	namespace "urn:scion:scion-toml-beacon-serv";
+    prefix "toml-bs";
+
+    import scion-toml-commons{
+    	prefix "toml-commons";
+    }
+
+    import scion-types{
+        prefix "sc-ty";
+    }
+
+    organization
+    "SCION group";
+
+    contact
+    "Some contact here";
+
+    description 
+    "This module ...
+    ";
+
+    revision 2019-11-01 {
+        description "First revision for proposal.";
+    }
+
+    container beacon-server{
+        uses toml-commons:config-commons-top;
+
+        container beacon-db{
+            leaf backend{
+                type identityref{
+                        base sc-ty:db-backend-base;
+                }
+            }
+            leaf connection{
+                type string;
+            }
+        }
+
+        container bs{
+
+            leaf keepalive-interval{
+                type sc-ty:time-string;
+                default "1s";
+                description "The interval between sending interface 
+                             keepalives in seconds.";
+            }
+
+            leaf keepalive-timeout{
+                type sc-ty:time-string;
+                default "3s";
+
+                description "The timeout until an interface that has not received 
+                             keepalives is considered expired.";
+            }
+
+            leaf origination-interval{
+                type sc-ty:time-string;
+                default "5s";
+
+                description "The interval between originating beacons.";
+            }
+
+            leaf propagation-interval{
+                type sc-ty:time-string;
+                default "5s";
+
+                description "The interval between propagating beacons.";
+            }
+
+            leaf registration-interval{
+                type sc-ty:time-string;
+                default "5s";
+
+                description "The interval between registering beacons.";
+            }
+
+            
+            leaf expired-check-interval{
+                type sc-ty:time-string;
+                default "200ms";
+
+                description "The interval between checking for expired 
+                             interfaces to revoke.";
+            }
+
+            leaf rev-ttl{
+                type sc-ty:time-string;
+                default "10s";
+
+                description "The revocation TTL";
+            }
+
+            leaf rev-overlap{
+                type sc-ty:time-string;
+                default "5s";
+
+                description 
+                "
+                The amount of time before the expiry of an existing 
+                revocation where the revoker can reissue a new 
+                revocation.
+                ";
+            }
+
+            container policies{
+
+                leaf propagation{
+                    type string;
+                    default "";
+
+                    description
+                    "
+                    The file path for the propagation policy. In case of the empty string,
+                    the default policy is used.
+                    ";
+                }
+                leaf core-registration{
+                    type string;
+                    default "";
+
+                    description
+                    "
+                    The file path for the core registration policy. In case of the empty string,
+                    the default policy is used. In a non-core beacon server, this field is ignored.
+                    ";
+                }
+
+                leaf up-registration{
+                    type string;
+                    default "";
+
+                    description
+                    "
+                    The file path for the up registration policy. In case of the empty string,
+                    the default policy is used. In a core beacon server, this field is ignored.
+                    ";
+                }
+
+
+                leaf down-registration{
+                    type string;
+                    default "";
+
+                    description
+                    "
+                    The file path for the down registration policy. In case of the empty string,
+                    the default policy is used. In a core beacon server, this field is ignored.
+                    ";
+                }
+
+                leaf hidden-path-registration{
+                    type string;
+                    default "";
+
+                    description
+                    "
+                    The file path for the hidden path registration policy. In case of the empty string,
+                    no hidden path functionality is used.
+                    ";
+                }
+            }
+        }//end container bs
+    }//end container beacon-server
+
+    
+}

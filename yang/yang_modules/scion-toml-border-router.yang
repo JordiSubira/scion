@@ -1,0 +1,50 @@
+module scion-toml-border-router{
+	namespace "urn:scion:scion-toml-br";
+    prefix "toml-cfg";
+
+    import scion-types{
+    	prefix "sc-ty";
+    }
+
+    import scion-toml-commons{
+    	prefix "toml-commons";
+    }
+
+    organization
+    "SCION group";
+
+    contact
+    "Some contact here";
+
+    description 
+    "This module ...
+    ";
+
+    revision 2019-11-01 {
+        description "First revision for proposal.";
+    }
+
+    container border-router{
+        uses toml-commons:config-commons-base;
+
+        container br{
+            leaf profile{
+                type boolean;
+                description
+                "
+                Enable cpu and memory profiling.
+                ";
+            }
+
+            leaf rollback-fail-action{
+                type sc-ty:fail-action;
+                description
+                "The action to take when an error occurs during a context rollback.
+                ";
+                default Fatal;
+            }
+        }
+    }
+
+    
+}

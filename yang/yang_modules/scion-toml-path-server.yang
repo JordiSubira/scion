@@ -1,0 +1,80 @@
+module scion-toml-path-server{
+	namespace "urn:scion:scion-toml-path-serv";
+    prefix "toml-ps";
+
+    import scion-toml-commons{
+    	prefix "toml-commons";
+    }
+    
+    import scion-types{
+        prefix "sc-ty";
+    }
+
+    organization
+    "SCION group";
+
+    contact
+    "Some contact here";
+
+    description 
+    "This module ...
+    ";
+
+    revision 2019-11-01 {
+        description "First revision for proposal.";
+    }
+
+    container path-server{
+        uses toml-commons:config-commons-top;
+
+        container ps{
+
+            leaf seg-sync{
+                type boolean;
+                description
+                "
+                Enable the 'old' replication of down segments between cores using seg-sync messages.
+                ";
+
+                default false;
+            }
+
+            leaf query-interval{
+                type sc-ty:time-string;
+                description
+                "
+                The time after which segments for a destination are refetched.
+                ";
+
+                default "5m";
+            }
+
+            leaf crypto-sync-interval{
+                type sc-ty:time-string;
+                description
+                "
+                The interval of crypto pushes towards the local CS.
+                ";
+
+                default "30s";
+            }
+
+            container path-db{
+                description "Configuration for the path database.";
+
+                uses toml-commons:db-config;
+            }
+
+            container rev-cache{
+                description "Configuration for the rev-cache backend.";
+
+                uses toml-commons:rev-cache-config;
+                
+            }//end container path-serv-rev-cache
+            
+        }//end container ps
+    }//end container path-server
+
+    
+    
+}//end module

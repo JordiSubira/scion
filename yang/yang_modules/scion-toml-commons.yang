@@ -1,0 +1,506 @@
+module scion-toml-commons{
+	namespace "urn:scion:scion-toml-commons";
+    prefix "toml-commons";
+
+    import scion-types{
+    	prefix "sc-ty";
+    }
+
+    organization
+    "SCION group";
+
+    contact
+    "Some contact here";
+
+    description 
+    "This module ...
+    ";
+
+    revision 2019-11-01 {
+        description "First revision for proposal.";
+    }   
+            
+    grouping config-commons-base{
+        description "Common leaf for general container";
+
+        container general{
+
+            leaf id{
+                type string;
+                mandatory true;
+
+                description "The ID of the service.";
+            }
+
+            leaf config-dir{
+                type string;
+
+                description 
+                "
+                Directory for loading AS information, certs,
+                keys, path policy, topology.
+                ";
+            }
+
+            leaf topology{
+                type string;
+
+                description
+                "
+                Topology file. If not specified, it is loaded from the 
+                config directory.
+                ";
+
+                default "/etc/scion/topology.json";
+            }
+
+            leaf reconnect-to-dispatcher{
+                type boolean;
+
+                description 
+                "
+                Enable the snetproxy reconnecter.
+                ";
+
+                default false;
+            }
+        }
+
+        container metrics{
+            container prometheus{
+                description 
+                "The address to export prometheus metrics on (host:port or ip:port or :port).
+                If not set, metrics are not exported.";
+                uses sc-ty:host-ip-port;
+            }
+        }
+
+         container logging{
+                container console{
+                    leaf level{
+                        type sc-ty:loggin-level;
+                        default "Debug";
+                    }
+                }
+
+                container file{
+                    leaf level{
+                        type sc-ty:loggin-level;
+                        default "Debug";
+                    }
+
+                    leaf path{
+                        type string;
+                        description 
+                        "
+                        Location of the logging file. If not specified, logging to file is disabled.
+                        ";
+                    }
+
+                    leaf size{
+                        type uint16;
+                        description
+                        "
+                        Maximum size of the log file in MiB.
+                        ";
+
+                        default 50;
+                    }
+
+                    leaf max-age{
+                        type uint16;
+                        description
+                        "
+                        Max age of log file in days.
+                        ";
+
+                        default 7;
+                    }
+
+                    leaf max-backups{
+                        type uint16;
+                        description 
+                        "
+                        Maximum number of log files to retain.
+                        ";
+
+                        default 10;
+                    }
+
+                    leaf flush-interval{
+                        type int16;
+                        description
+                        "
+                        How frequently to flush to the log file, in seconds. If 0, all messages
+                        are immediately flushed. If negative, messages are never flushed
+                        automatically.
+                        ";
+
+                        default 5;
+                    }
+                }
+
+            }
+
+            container discovery{
+                //Only on BR?
+                leaf allow-semi-mutable{
+                    type boolean;
+                    description
+                    "
+                    Allow changes to the semi-mutable section during updates to the
+                    static topology fetched from the discovery service.
+                    ";
+
+                    default false;
+                }
+
+                container static{
+
+                    leaf enable{
+                        type boolean;
+                        description
+                        "
+                        Enable periodic fetching of the static topology.
+                        ";
+
+                        default false;
+                    }
+
+                    leaf interval{
+                        when '../enable = "true"';
+                        type sc-ty:time-string;
+                        description
+                        "
+                        Time between two consecutive static topology queries.
+                        ";
+
+                        default "5m";
+                    }
+
+                    leaf timeout{
+                        when '../enable = "true"';
+                        type sc-ty:time-string;
+                        description
+                        "
+                        Timeout for querying the static topology.
+                        ";
+
+                        default "1s";
+                    }
+
+                    leaf https{
+                        when '../enable = "true"';
+                        type boolean;
+                        description
+                        "
+                        Flag expressing whether https connection is required.
+                        ";
+
+                        default false;
+                    }
+
+                    leaf filename{
+                        when '../enable = "true"';
+                        type string;
+                        description
+                        "
+                        Filename where the updated static topologies are written.
+                        If empty string, the updated topologies are not written.
+                        ";
+
+                        default "";
+                    }
+
+                    container connect{
+                        when '../enable = "true"';
+
+                        leaf initial-period{
+                            type sc-ty:time-string;
+                            description
+                            "
+                            Maximum time spent attempting to fetch the topology from the
+                            discovery service on start. 
+                            If no topology is successfully fetched in this period,
+                            the fail-action is executed.
+                            ";
+
+                            default "20s";
+                        }
+
+                        leaf fail-action{
+                            type sc-ty:fail-action;
+                            description
+                            "The action to take if no topology is successfully fetched in
+                            the initial-period.
+                            ";
+                        }
+                    }
+                }//end container discovery-static
+
+                container dynamic{
+                    leaf enable{
+                        type boolean;
+                        description
+                        "
+                        Enable periodic fetching of the dynamic topology.
+                        ";
+
+                        default false;
+                    }
+
+                    leaf interval{
+                        when '../enable = "true"';
+                        type sc-ty:time-string;
+                        description
+                        "
+                        Time between two consecutive dynamic topology queries.
+                        ";
+
+                        default "5m";
+                    }
+
+                    leaf timeout{
+                        when '../enable = "true"';
+                        type sc-ty:time-string;
+                        description
+                        "
+                        Timeout for querying the dynamic topology.
+                        ";
+
+                        default "1s";
+                    }
+
+                    leaf https{
+                        when '../enable = "true"';
+                        type boolean;
+                        description
+                        "
+                        Flag expressing whether https connection is required.
+                        ";
+
+                        default false;
+                    }
+
+                    leaf filename{
+                        when '../enable = "true"';
+                        type string;
+                        description
+                        "
+                        Filename where the updated dynamic topologies are written.
+                        If empty string, the updated topologies are not written.
+                        ";
+
+                        default "";
+                    }
+
+                    container connect{
+                        when '../enable = "true"';
+
+                        leaf initial-period{
+                            type sc-ty:time-string;
+                            description
+                            "
+                            Maximum time spent attempting to fetch the topology from the
+                            discovery service on start.
+                            If no topology is successfully fetched in this period,
+                            the fail-action is executed.
+                            ";
+
+                            default "20s";
+                        }
+
+                        leaf fail-action{
+                            type sc-ty:fail-action;
+                            description
+                            "The action to take if no topology is successfully fetched in
+                            the initial-period.
+                            ";
+                        }
+                    }
+                }//end discovery-dynamic
+
+        }//end discovery container
+
+
+
+
+    }//end grouping commons
+
+    grouping db-config{
+        leaf backend{
+            type identityref{
+                base sc-ty:db-backend-base;
+            }
+            //TODO: Ask if there are any enumeration
+            description 
+            "
+            The type of database backend.
+            ";
+        }
+        leaf connection{
+            type string;
+            description
+            "
+            Connection path to the database.
+            ";
+        }
+
+
+        leaf max-open-connections{
+            type uint16;
+            description 
+            "
+            The maximum number of open connections to the database. 
+            If it is not set, the limit is not set and uses the go default.
+            ";
+        }
+
+        leaf max-idle-connections{
+            type uint16;
+            description 
+            "
+            The maximum number of idle connections to the database. 
+            If it is not set, the limit is not set and uses the go default.
+            ";
+        }
+    }
+
+    grouping rev-cache-config{
+        leaf backend{
+            type identityref{
+                base sc-ty:cache-backend-base;
+            }
+            //TODO: Ask if there are any enumeration
+            description 
+            "
+            The type of rev-cache backend.
+            ";
+        }
+
+        leaf max-open-connections{
+            type uint16;
+            description 
+            "
+            The maximum number of open connections to the database. 
+            If it is not set, the limit is not set and uses the go default.
+            ";
+        }
+
+        leaf max-idle-connections{
+            type uint16;
+            description 
+            "
+            The maximum number of idle connections to the database. 
+            If it is not set, the limit is not set and uses the go default.
+            ";
+        }
+    }
+
+    grouping config-commons-top{
+
+        uses toml-commons:config-commons-base;
+
+        container tracing{
+            
+            leaf enabled{
+                type boolean;
+                default false;
+
+                description "Enable the tracing.";
+            }
+
+            leaf debug{
+                when '../enabled = "true"';
+                type boolean;
+                default false;
+
+                description "Enable debug mode.";
+            }
+
+            container agent{
+                when '../enabled = "true"';
+                description 
+                "
+                Address of the local agent that handles the reported traces
+                ";
+
+                uses sc-ty:host-ip-port{
+                    refine address{
+                        default "localhost";
+                    }
+                    refine l4-port{
+                        default 6831;
+                    }
+                }
+            }
+
+        }//end container tracing
+
+        container trust-db{
+            description "Configuration for the trust database.";
+
+            uses toml-commons:db-config;
+        }
+
+        container quic{
+                
+            container server{
+                description
+                "
+                The address to start a QUIC server on (ip:port). If not set, a QUIC server is
+                not started.
+                ";
+                uses sc-ty:address-port{
+                    refine address{
+                        mandatory false;
+                    }
+                    refine l4-port{
+                        mandatory false;
+                    }
+                }
+            }
+            
+
+            leaf key-file{
+                type string;
+                description
+                "
+                Key file to use for authenticating QUIC connections.
+                ";
+            }
+
+            leaf cert-file{
+                type string;
+                description
+                "
+                Certificate file to use for authenticating QUIC connections.
+                ";
+            }
+            leaf resolution-fraction{
+                type decimal64{
+                    fraction-digits 2; // https://tools.ietf.org/html/rfc7950#section-9.3
+                }
+                description
+                "
+                SVCResolutionFraction enables SVC resolution for traffic to SVC
+                destinations in a way that is also compatible with control plane servers
+                that do not implement the SVC Resolution Mechanism. The value represents
+                the percentage of time, out of the total available context timeout,
+                spent attempting to perform SVC resolution. If SVCResolutionFraction is
+                0 or less, SVC resolution is never attempted. If it is between 0 and 1,
+                the remaining context timeout is multiplied by the value, and that
+                amount of time is spent waiting for an SVC resolution reply from the
+                server. If this times out, the data packet is sent with an SVC
+                destination. If the value is 1 or more, then legacy behavior is
+                disabled, and data packets are never sent to SVC destinations unless the
+                resolution step is successful.
+                ";
+            }
+        }//end quic container
+
+        
+
+    }//end grouping config-commons-top
+        
+}//end module

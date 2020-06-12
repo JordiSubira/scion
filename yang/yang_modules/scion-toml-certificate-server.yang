@@ -1,0 +1,116 @@
+module scion-toml-certificate-server{
+	namespace "urn:scion:scion-toml-cert-serv";
+    prefix "toml-cs";
+
+    import scion-toml-commons{
+    	prefix "toml-commons";
+    }
+
+    import scion-types{
+        prefix "sc-ty";
+    }
+
+    organization
+    "SCION group";
+
+    contact
+    "Some contact here";
+
+    description 
+    "This module ...
+    ";
+
+    revision 2019-11-01 {
+        description "First revision for proposal.";
+    }
+
+    container certificate-server{
+        uses toml-commons:config-commons-top;
+
+        container sd-client{
+            leaf path{
+                type string;
+                description 
+                "
+                The path to the SCION deamon.
+                ";
+
+                default "/run/shm/sciond/default.sock";
+            }
+
+            leaf initial-connect-period{
+                type sc-ty:time-string;
+                description
+                "Maximum time spent attempting to connect to sciond on start.
+                ";
+
+                default "20s";
+            }
+        }
+
+        container cs{
+            leaf leaf-reissue-lead-time{
+                type sc-ty:time-string;
+                description
+                "
+                Time between starting reissue requests and leaf cert expiration.
+                ";
+
+                default "6h";
+            }
+
+            leaf issuer-reissue-lead-time{
+                type sc-ty:time-string;
+                description
+                "
+                Time between self issuing core cert and core cert expiration.
+                ";
+
+                default "73h";
+            }
+
+            leaf reissue-rate{
+                type sc-ty:time-string;
+                description
+                "
+                Interval between two consecutive reissue requests.
+                ";
+
+                default "10s";
+            }
+
+            leaf reissue-timeout{
+                type sc-ty:time-string;
+                description
+                "
+                Timeout for resissue request.
+                ";
+
+                default "5s";
+            }
+
+            leaf automatic-renewal{
+                type boolean;
+                description
+                "
+                Value expressing whether automatic reissuing is enabled.
+                ";
+
+                default false;
+            }
+
+            leaf disable-core-push{
+                type boolean;
+                description
+                "
+                Value expressing whether core pushing is disabled. 
+                ";
+
+                default false;
+            }
+        }//end container cs
+    }//end container certificate-server
+
+    
+
+}//end module
