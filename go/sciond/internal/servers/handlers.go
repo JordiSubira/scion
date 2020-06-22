@@ -347,7 +347,7 @@ func (h *DrKeyLvl2RequestHandler) Handle(ctx context.Context, conn net.Conn,
 	metricsDone := metrics.DRKeyLvl2Requests.Start()
 	label := metrics.OkSuccess
 	logger := log.FromCtx(ctx)
-	logger.Debug("[DrKeyLvl2RequestHandler] Received request", "req", req)
+	logger.Debug("[DrKeyLvl2RequestHandler] Received request", "req", req, "from", src)
 	workCtx, workCancelF := context.WithTimeout(ctx, DefaultWorkTimeout)
 	defer workCancelF()
 
@@ -379,7 +379,7 @@ func (h *DrKeyLvl2RequestHandler) Handle(ctx context.Context, conn net.Conn,
 		logger.Warn("Unable to reply to client", "client", src, "err", err, "reply", replyToSend)
 		metricsDone(metrics.ErrNetwork)
 	} else {
-		logger.Trace("Sent reply", "DRKeyLvl2Rep", drkey_mgmt.Lvl2Rep{})
+		logger.Trace("Sent reply", "DRKeyLvl2Rep", replyToSend.DRKeyLvl2Rep)
 		metricsDone(label)
 	}
 }

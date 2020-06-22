@@ -79,6 +79,7 @@ type Config struct {
 	PathDB   pathstorage.PathDBConf     `toml:"path_db,omitempty"`
 	BS       BSConfig                   `toml:"beaconing,omitempty"`
 	PS       PSConfig                   `toml:"path,omitempty"`
+	DRKey    DRKeyConfig                `toml:"drkey,omitempty"`
 }
 
 // InitDefaults initializes the default values for all parts of the config.
@@ -94,6 +95,7 @@ func (cfg *Config) InitDefaults() {
 		&cfg.PathDB,
 		&cfg.BS,
 		&cfg.PS,
+		&cfg.DRKey,
 	)
 }
 
@@ -109,6 +111,7 @@ func (cfg *Config) Validate() error {
 		&cfg.PathDB,
 		&cfg.BS,
 		&cfg.PS,
+		&cfg.DRKey,
 	)
 }
 
@@ -126,6 +129,7 @@ func (cfg *Config) Sample(dst io.Writer, path config.Path, _ config.CtxMap) {
 		&cfg.PathDB,
 		&cfg.BS,
 		&cfg.PS,
+		&cfg.DRKey,
 	)
 }
 

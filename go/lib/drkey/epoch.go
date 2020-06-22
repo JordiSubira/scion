@@ -44,5 +44,5 @@ func NewEpoch(begin, end uint32) Epoch {
 
 // Contains indicates whether the time point is inside this Epoch.
 func (e *Epoch) Contains(t time.Time) bool {
-	return e.Contains(t)
+	return e.Validity.Contains(t)
 }

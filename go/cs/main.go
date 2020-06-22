@@ -37,6 +37,7 @@ import (
 	"github.com/scionproto/scion/go/cs/beaconing"
 	"github.com/scionproto/scion/go/cs/beaconstorage"
 	"github.com/scionproto/scion/go/cs/config"
+	"github.com/scionproto/scion/go/cs/drkey"
 	"github.com/scionproto/scion/go/cs/handlers"
 	"github.com/scionproto/scion/go/cs/ifstate"
 	"github.com/scionproto/scion/go/cs/keepalive"
@@ -48,6 +49,7 @@ import (
 	"github.com/scionproto/scion/go/cs/segutil"
 	"github.com/scionproto/scion/go/lib/addr"
 	"github.com/scionproto/scion/go/lib/common"
+	"github.com/scionproto/scion/go/lib/drkeystorage"
 	"github.com/scionproto/scion/go/lib/env"
 	"github.com/scionproto/scion/go/lib/fatal"
 	"github.com/scionproto/scion/go/lib/infra"
@@ -257,6 +259,34 @@ func realMain() int {
 		return 1
 	}
 	defer beaconStore.Close()
+
+	var drkeyStore drkeystorage.ServiceStore
+	var svFactory drkeystorage.SecretValueFactory
+	if cfg.DRKey.Enabled() {
+		masterKey, err := loadMasterSecret()
+		if err != nil {
+			log.Crit("Unable to load master secret in DRKey", "err", err)
+			return 1
+		}
+		svFactory = drkey.NewSecretValueFactory(
+			masterKey.Key0, cfg.DRKey.EpochDuration.Duration)
+		drkeyDB, err := cfg.DRKey.NewDB()
+		if err != nil {
+			log.Crit("Unable to initialize DRKey DB", "err", err)
+			return 1
+		}
+		decKey, err := loadDecryptSecret(topo.IA())
+		if err != nil {
+			log.Crit("Unable to load decryption secret in DRKey", "err", err)
+			return 1
+		}
+		drkeyStore = drkey.NewServiceStore(topo.IA(), decKey, drkeyDB, trustDB,
+			svFactory, msgr, cfg.DRKey.Delegation.ToMapPerHost())
+		log.Info("DRKey is enabled")
+	} else {
+		log.Warn("DRKey is DISABLED by configuration")
+	}
+
 	intfs = ifstate.NewInterfaces(topo.IFInfoMap(), ifstate.Config{})
 	prometheus.MustRegister(ifstate.NewCollector(intfs))
 	chainReqHandler := trustStore.NewChainReqHandler(topo.IA())
@@ -296,6 +326,24 @@ func realMain() int {
 	tcpMsgr.AddHandler(infra.ChainRequest, chainReqHandler)
 	tcpMsgr.AddHandler(infra.TRCRequest, trcReqHandler)
 	tcpMsgr.AddHandler(infra.SegRequest, segReqHandler)
+
+	signingTypes := []infra.MessageType{infra.Seg, infra.ChainIssueRequest}
+	if cfg.DRKey.Enabled() {
+		signingTypes = []infra.MessageType{
+			infra.Seg,
+			infra.ChainIssueRequest,
+			infra.DRKeyLvl1Request,
+			infra.DRKeyLvl1Reply,
+			// infra.DRKeyLvl2Request,
+		}
+
+		drkeyLvl1ReqHandler := drkeyStore.NewLvl1ReqHandler()
+		drkeyLvl2ReqHandler := drkeyStore.NewLvl2ReqHandler()
+
+		msgr.AddHandler(infra.DRKeyLvl1Request, drkeyLvl1ReqHandler)
+		msgr.AddHandler(infra.DRKeyLvl2Request, drkeyLvl2ReqHandler)
+		tcpMsgr.AddHandler(infra.DRKeyLvl2Request, drkeyLvl2ReqHandler)
+	}
 
 	// Setup metrics and status pages
 	http.HandleFunc("/config", configHandler)
@@ -353,8 +401,9 @@ func realMain() int {
 				},
 			},
 		),
+		drkeyStore: drkeyStore,
 	}
-	msgr.UpdateSigner(signer, []infra.MessageType{infra.Seg, infra.ChainIssueRequest})
+	msgr.UpdateSigner(signer, signingTypes)
 	// TODO(scrye): this breaks Interface Keepalives if it is enabled
 	// msgr.UpdateVerifier(trust.NewVerifier(trustStore))
 
@@ -404,6 +453,7 @@ type periodicTasks struct {
 	topoProvider    topology.Provider
 	allowIsdLoop    bool
 	addressRewriter *messenger.AddressRewriter
+	drkeyStore      drkeystorage.ServiceStore
 
 	keepalive  *periodic.Runner
 	originator *periodic.Runner
@@ -421,6 +471,9 @@ type periodicTasks struct {
 	pathDBCleaner *periodic.Runner
 	cryptosyncer  *periodic.Runner
 	rcCleaner     *periodic.Runner
+
+	drkeyStoreCleaner    *periodic.Runner
+	drkeyStorePrefetcher *periodic.Runner
 
 	mtx     sync.Mutex
 	running bool
@@ -482,6 +535,22 @@ func (t *periodicTasks) Start() error {
 	// }, cfg.PS.CryptoSyncInterval.Duration, cfg.PS.CryptoSyncInterval.Duration)
 	t.rcCleaner = periodic.Start(revcache.NewCleaner(t.args.RevCache, "ps_revocation"),
 		10*time.Second, 10*time.Second)
+
+	if cfg.DRKey.Enabled() {
+		// TODO(juagargi): if there has been a change in the duration, we need to keep
+		// the already sent keys (and their duration) as they were already handed to other entities
+		cleanerPeriod := 2 * cfg.DRKey.EpochDuration.Duration
+		t.drkeyStoreCleaner = periodic.Start(drkeystorage.NewStoreCleaner(t.drkeyStore),
+			cleanerPeriod, cleanerPeriod)
+		prefetchPeriod := cfg.DRKey.EpochDuration.Duration / 2
+		t.drkeyStorePrefetcher = periodic.Start(
+			&drkey.Prefetcher{
+				LocalIA:     topo.IA(),
+				Store:       t.drkeyStore,
+				KeyDuration: cfg.DRKey.EpochDuration.Duration,
+			},
+			prefetchPeriod, prefetchPeriod)
+	}
 
 	log.Info("Started periodic tasks")
 	return nil
@@ -683,6 +752,8 @@ func (t *periodicTasks) Kill() {
 	t.pathDBCleaner.Kill()
 	t.cryptosyncer.Kill()
 	t.rcCleaner.Kill()
+	t.drkeyStoreCleaner.Kill()
+	t.drkeyStorePrefetcher.Kill()
 	t.running = false
 	log.Info("Stopped periodic tasks.")
 }
@@ -808,6 +879,30 @@ func loadPolicy(fn string, t beacon.PolicyType) (beacon.Policy, error) {
 	}
 	policy.InitDefaults()
 	return policy, nil
+}
+
+func loadMasterSecret() (keyconf.Master, error) {
+	masterKey, err := keyconf.LoadMaster(filepath.Join(cfg.General.ConfigDir, "keys"))
+	if err != nil {
+		return keyconf.Master{}, serrors.WrapStr("error getting master secret", err)
+	}
+	return masterKey, nil
+}
+
+func loadDecryptSecret(ia addr.IA) ([]byte, error) {
+	id := keyconf.ID{
+		Usage:   keyconf.ASDecryptionKey,
+		IA:      ia,
+		Version: 1,
+	}
+
+	privateKey, err := keyconf.LoadKeyFromFile(filepath.Join(cfg.General.ConfigDir,
+		"keys", keyconf.PrivateKeyFile(keyconf.ASDecryptionKey, id.Version)),
+		keyconf.PrivateKey, id)
+	if err != nil {
+		return []byte{}, serrors.WrapStr("error getting private key", err)
+	}
+	return privateKey.Bytes, nil
 }
 
 func checkFlags(cfg *config.Config) (int, bool) {

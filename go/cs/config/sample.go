@@ -20,3 +20,10 @@ const psSample = `
 # The time after which segments for a destination are refetched. (default 5m)
 query_interval = "5m"
 `
+const drkeySample = `
+# EpochDuration of the DRKey secret value and of all derived keys. (default "24h")
+epoch_duration = "24h"
+
+# MaxReplyAge is the age limit for a lvl 1 reply to be accepted. Older are rejected. (default "2s")
+max_reply_age = "2s"
+`

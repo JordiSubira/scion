@@ -39,7 +39,6 @@ type BaseStore interface {
 // It automatically removes expired keys.
 type ServiceStore interface {
 	BaseStore
-	SetMessenger(msger infra.Messenger)
 	GetLvl1Key(ctx context.Context, meta drkey.Lvl1Meta, valTime time.Time) (drkey.Lvl1Key, error)
 	NewLvl1ReqHandler() infra.Handler
 	NewLvl2ReqHandler() infra.Handler
