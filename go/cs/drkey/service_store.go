@@ -197,12 +197,14 @@ func (s *ServiceStore) getCertChain(ctx context.Context, ia addr.IA,
 		// parse
 		chain, err = cert.ParseChain(rawChain)
 		if err != nil {
-			return cert.Chain{}, serrors.WrapStr("unable to parse signed certificate chain", err)
+			return cert.Chain{},
+				serrors.WrapStr("unable to parse signed certificate chain", err)
 		}
 		return chain, nil
 	}
 	if err != trust.ErrNotFound {
-		return cert.Chain{}, serrors.WrapStr("error in trust DB while getting certificate for AS", err)
+		return cert.Chain{},
+			serrors.WrapStr("error in trust DB while getting certificate for AS", err)
 	}
 
 	chainReq := &cert_mgmt.ChainReq{
@@ -213,7 +215,8 @@ func (s *ServiceStore) getCertChain(ctx context.Context, ia addr.IA,
 	csAddr := &snet.SVCAddr{IA: ia, SVC: addr.SvcCS}
 	reply, err := s.msger.GetCertChain(ctx, chainReq, csAddr, messenger.NextId())
 	if err != nil {
-		return cert.Chain{}, serrors.WrapStr("could not query CS for certificate", err, "remote CS", csAddr)
+		return cert.Chain{},
+			serrors.WrapStr("could not query CS for certificate", err, "remote CS", csAddr)
 	}
 	chain, err = cert.ParseChain(reply.RawChain)
 	if err != nil {
@@ -410,7 +413,8 @@ func (h *lvl2ReqHandler) validate() error {
 			"type(req)", fmt.Sprintf("%T", h.request.Message))
 	}
 	// TODO(juagargi) do the checks depending on the key type
-	log.Debug("[validate]", "request.peer.type", common.TypeOf(h.request.Peer), "peer", h.request.Peer)
+	log.Debug("[validate]", "request.peer.type", common.TypeOf(h.request.Peer),
+		"peer", h.request.Peer)
 	var ipAddr net.IP
 	switch peerAddr := h.request.Peer.(type) {
 	case *snet.UDPAddr:
@@ -418,8 +422,9 @@ func (h *lvl2ReqHandler) validate() error {
 	case *net.TCPAddr:
 		ipAddr = peerAddr.IP
 	default:
-		return common.NewBasicError("Invalid peer address type, expected *snet.UDPAddr or *net.TCPAddr", nil,
-			"peer", h.request.Peer, "type", common.TypeOf(h.request.Peer))
+		return common.NewBasicError("Invalid peer address type, expected *snet.UDPAddr"+
+			" or *net.TCPAddr", nil, "peer", h.request.Peer,
+			"type", common.TypeOf(h.request.Peer))
 	}
 	localAddr := addr.HostFromIP(ipAddr)
 	log.Trace("lvl2ReqHandler validate", "localAddr", localAddr.String())

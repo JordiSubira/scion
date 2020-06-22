@@ -20,18 +20,27 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/scionproto/scion/go/lib/drkey"
 	"github.com/scionproto/scion/go/lib/drkeystorage"
 	"github.com/scionproto/scion/go/lib/keyconf"
 	"github.com/scionproto/scion/go/lib/scrypto/cert"
 	"github.com/scionproto/scion/go/lib/util"
 	"github.com/scionproto/scion/go/lib/xtest"
-	"github.com/stretchr/testify/require"
 )
 
 var (
-	id111 = keyconf.ID{IA: xtest.MustParseIA("1-ff00:0:111"), Usage: keyconf.ASDecryptionKey, Version: 1}
-	id112 = keyconf.ID{IA: xtest.MustParseIA("1-ff00:0:112"), Usage: keyconf.ASDecryptionKey, Version: 1}
+	id111 = keyconf.ID{
+		IA:      xtest.MustParseIA("1-ff00:0:111"),
+		Usage:   keyconf.ASDecryptionKey,
+		Version: 1,
+	}
+	id112 = keyconf.ID{
+		IA:      xtest.MustParseIA("1-ff00:0:112"),
+		Usage:   keyconf.ASDecryptionKey,
+		Version: 1,
+	}
 )
 
 func getTestMasterSecret() []byte {

@@ -57,7 +57,8 @@ func (f *Prefetcher) Run(ctx context.Context) {
 	}
 }
 
-func getLvl1Key(ctx context.Context, store drkeystorage.ServiceStore, srcIA, dstIA addr.IA, valTime time.Time) {
+func getLvl1Key(ctx context.Context, store drkeystorage.ServiceStore,
+	srcIA, dstIA addr.IA, valTime time.Time) {
 	meta := drkey.Lvl1Meta{
 		SrcIA: srcIA,
 		DstIA: dstIA,

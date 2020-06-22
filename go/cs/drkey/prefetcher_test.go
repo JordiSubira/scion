@@ -97,7 +97,8 @@ package drkey
 // 			ia("1-ff00:0:112"),
 // 		}
 // 		store.EXPECT().GetLvl1SrcASes(gomock.Any()).Return(asList, nil)
-// 		store.EXPECT().GetValidLvl1SrcASes(gomock.Any(), gomock.Any()).Return(validAsList, nil).Do(
+// 		store.EXPECT().GetValidLvl1SrcASes(gomock.Any(),
+//						gomock.Any()).Return(validAsList, nil).Do(
 // 			func(ctx context.Context, argValidTime uint32) {
 // 				now := uint32(time.Now().Unix())
 // 				SoMsg("validTime", argValidTime, ShouldBeGreaterThanOrEqualTo, now)
@@ -117,7 +118,8 @@ package drkey
 // 	ctx, cancelF := context.WithTimeout(context.Background(), time.Millisecond)
 // 	defer cancelF()
 // 	Convey("Replies are on time", t, func() {
-// 		// TODO(juagargi): if we move the logic of processing the reply to the reply handler only, remove half of this test
+// 		// TODO(juagargi): if we move the logic of processing the reply to the
+// 		// reply handler only, remove half of this test
 // 		ctrl, msger, trustDB, store, requester := setupRequester(t)
 // 		defer ctrl.Finish()
 
@@ -129,7 +131,8 @@ package drkey
 // 		requester.PendingASes.set = setFromList(pending)
 // 		_, privateKey111, cert112, _ := loadCertsKeys(t)
 // 		// use the same cert for both ASes (simplifies test):
-// 		trustDB.EXPECT().GetChainMaxVersion(gomock.Any(), gomock.Any()).Return(&cert.Chain{Leaf: cert112}, nil).Times(2)
+// 		trustDB.EXPECT().GetChainMaxVersion(gomock.Any(),
+//			gomock.Any()).Return(&cert.Chain{Leaf: cert112}, nil).Times(2)
 // 		newReply := func(srcIA addr.IA) *drkey_mgmt.DRKeyLvl1Rep {
 // 			dstIA := ia("1-ff00:0:111")
 // 			replyTo111, err := lvl1KeyBuildReply(srcIA, dstIA, &sv, cert112, privateKey111)
