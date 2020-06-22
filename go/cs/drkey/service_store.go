@@ -56,7 +56,7 @@ type ServiceStore struct {
 var _ drkeystorage.ServiceStore = &ServiceStore{}
 
 // NewServiceStore constructs a DRKey ServiceStore.
-func NewServiceStore(local addr.IA, asDecryptKey common.RawBytes, db drkey.Lvl1DB,
+func NewServiceStore(local addr.IA, asDecryptKey []byte, db drkey.Lvl1DB,
 	trustDB trust.DB, svFac drkeystorage.SecretValueFactory,
 	msger infra.Messenger, allowedDS map[[16]byte]map[string]struct{}) *ServiceStore {
 

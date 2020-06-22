@@ -23,8 +23,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/scionproto/scion/go/lib/addr"
-	"github.com/scionproto/scion/go/lib/common"
 	"github.com/scionproto/scion/go/lib/drkey"
 	"github.com/scionproto/scion/go/lib/scrypto/cert"
 	"github.com/scionproto/scion/go/lib/util"
@@ -62,10 +63,8 @@ func TestSecretValueStoreTicker(t *testing.T) {
 		return time.Unix(0, 0)
 	}
 	c.mutex.Unlock()
-
-	if !waitCondWithTimeout(time.Minute, cond) {
-		t.Fatal("Time function not called. Is ticker running in the store?")
-	}
+	ret := waitCondWithTimeout(time.Minute, cond)
+	require.True(t, ret)
 }
 
 func TestSecretValueStore(t *testing.T) {
@@ -80,52 +79,39 @@ func TestSecretValueStore(t *testing.T) {
 
 	k1 := drkey.SV{
 		SVMeta: drkey.SVMeta{Epoch: drkey.NewEpoch(10, 12)},
-		Key:    drkey.DRKey(common.RawBytes{1, 2, 3}),
+		Key:    drkey.DRKey([]byte{1, 2, 3}),
 	}
 	c.Set(1, k1)
 	c.cleanExpired()
 	k, found := c.Get(1)
-	if !found {
-		t.Fatalf("Should have been found")
-	}
-	if !k1.Equal(k) {
-		t.Fatalf("Both SVs should be equal. Expected: %v . Got: %v", k1, k)
-	}
-	if len(c.cache) != 1 {
-		t.Fatalf("The cache should contain 1 SV, but it contains %d", len(c.cache))
-	}
+	require.True(t, found)
+	require.Equal(t, k1, k)
+	require.Len(t, c.cache, 1)
+
 	k2 := drkey.SV{
 		SVMeta: drkey.SVMeta{Epoch: drkey.NewEpoch(11, 13)},
-		Key:    drkey.DRKey(common.RawBytes{2, 3, 4}),
+		Key:    drkey.DRKey([]byte{2, 3, 4}),
 	}
 	now.Store(time.Unix(12, 0).Add(-1 * time.Nanosecond))
 	c.Set(2, k2)
-	if len(c.cache) != 2 {
-		t.Fatalf("The cache should contain 2 SVs, but it contains %d", len(c.cache))
-	}
+	require.Len(t, c.cache, 2)
 	c.cleanExpired()
-	if len(c.cache) != 2 {
-		t.Fatalf("The cache should contain 2 SVs, but it contains %d", len(c.cache))
-	}
+	require.Len(t, c.cache, 2)
 	now.Store(time.Unix(12, 1))
 	c.cleanExpired()
-	if len(c.cache) != 1 {
-		t.Fatalf("The cache should contain 1 SV, but it contains %d", len(c.cache))
-	}
+	require.Len(t, c.cache, 1)
 	_, found = c.Get(1)
-	if found {
-		t.Fatalf("Should have not been found")
-	}
+	require.False(t, found)
 }
 
 func TestSecretValueFactory(t *testing.T) {
-	master := common.RawBytes{}
+	master := []byte{}
 	fac := NewSecretValueFactory(master, 10*time.Second)
 	_, err := fac.GetSecretValue(time.Now())
 	if err == nil {
 		t.Fatalf("Should have failed, wrong size of master key")
 	}
-	master = common.RawBytes{0, 1, 2, 3}
+	master = []byte{0, 1, 2, 3}
 	fac = NewSecretValueFactory(master, 10*time.Second)
 	k, err := fac.GetSecretValue(util.SecsToTime(10))
 	if err != nil {

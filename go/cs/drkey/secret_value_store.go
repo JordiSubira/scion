@@ -107,13 +107,13 @@ func (m *SecretValueStore) startCleaner() {
 // SecretValueFactory stores the secret value
 type SecretValueFactory struct {
 	keyDuration time.Duration
-	masterKey   common.RawBytes
+	masterKey   []byte
 	keyMap      *SecretValueStore
 	mapMutex    sync.Mutex
 }
 
 // NewSecretValueFactory return a default initialized SecretValueFactory.
-func NewSecretValueFactory(masterKey common.RawBytes,
+func NewSecretValueFactory(masterKey []byte,
 	keyDuration time.Duration) *SecretValueFactory {
 
 	s := &SecretValueFactory{

@@ -20,7 +20,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/scionproto/scion/go/lib/common"
 	"github.com/scionproto/scion/go/lib/drkey"
 	"github.com/scionproto/scion/go/lib/drkeystorage"
 	"github.com/scionproto/scion/go/lib/keyconf"
@@ -35,8 +34,8 @@ var (
 	id112 = keyconf.ID{IA: xtest.MustParseIA("1-ff00:0:112"), Usage: keyconf.ASDecryptionKey, Version: 1}
 )
 
-func getTestMasterSecret() common.RawBytes {
-	return common.RawBytes{0, 1, 2, 3}
+func getTestMasterSecret() []byte {
+	return []byte{0, 1, 2, 3}
 }
 
 // SecretValueTestFactory works as a SecretValueFactory but uses a user-controlled-variable instead
