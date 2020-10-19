@@ -81,6 +81,7 @@ type Config struct {
 	BS        BSConfig         `toml:"beaconing,omitempty"`
 	PS        PSConfig         `toml:"path,omitempty"`
 	CA        CA               `toml:"ca,omitempty"`
+	DRKey     DRKeyConfig      `toml:"drkey,omitempty"`
 }
 
 // InitDefaults initializes the default values for all parts of the config.
@@ -98,6 +99,7 @@ func (cfg *Config) InitDefaults() {
 		&cfg.BS,
 		&cfg.PS,
 		&cfg.CA,
+		&cfg.DRKey,
 	)
 }
 
@@ -115,6 +117,7 @@ func (cfg *Config) Validate() error {
 		&cfg.BS,
 		&cfg.PS,
 		&cfg.CA,
+		&cfg.DRKey,
 	)
 }
 
@@ -158,6 +161,7 @@ func (cfg *Config) Sample(dst io.Writer, path config.Path, _ config.CtxMap) {
 		&cfg.BS,
 		&cfg.PS,
 		&cfg.CA,
+		&cfg.DRKey,
 	)
 }
 

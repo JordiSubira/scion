@@ -42,6 +42,10 @@ protobuf: protobuf_clean
 	tar -kxf bazel-bin/go/pkg/proto/daemon/proto_srcs.tar -C go/pkg/proto/daemon
 	chmod 0644 go/pkg/proto/daemon/*.pb.go
 
+	bazel build //go/pkg/proto/drkey:proto_srcs
+	tar -kxf bazel-bin/go/pkg/proto/drkey/proto_srcs.tar -C go/pkg/proto/drkey
+	chmod 0644 go/pkg/proto/drkey/*.pb.go
+
 protobuf_clean:
 	rm -f go/pkg/proto/*/*.pb.go
 
