@@ -43,6 +43,7 @@ type Config struct {
 	Tracing  env.Tracing      `toml:"tracing,omitempty"`
 	TrustDB  storage.DBConfig `toml:"trust_db,omitempty"`
 	PathDB   storage.DBConfig `toml:"path_db,omitempty"`
+	DRKeyDB  storage.DBConfig `toml:"drkey_db,omitempty"`
 	SD       SDConfig         `toml:"sd,omitempty"`
 }
 
@@ -55,6 +56,7 @@ func (cfg *Config) InitDefaults() {
 		&cfg.Tracing,
 		cfg.TrustDB.WithDefault(fmt.Sprintf(storage.DefaultTrustDBPath, "sd")),
 		cfg.PathDB.WithDefault(fmt.Sprintf(storage.DefaultPathDBPath, "sd")),
+		cfg.DRKeyDB.WithDefault(fmt.Sprintf(storage.DefaultDRKeyDBPath, "sd")),
 		&cfg.SD,
 	)
 }
@@ -67,6 +69,7 @@ func (cfg *Config) Validate() error {
 		&cfg.Metrics,
 		&cfg.TrustDB,
 		&cfg.PathDB,
+		&cfg.DRKeyDB,
 		&cfg.SD,
 	)
 }
@@ -91,6 +94,13 @@ func (cfg *Config) Sample(dst io.Writer, path config.Path, _ config.CtxMap) {
 				fmt.Sprintf(storage.DefaultPathDBPath, "sd"),
 			),
 			"path_db",
+		),
+		config.OverrideName(
+			config.FormatData(
+				&cfg.DRKeyDB,
+				fmt.Sprintf(storage.DefaultDRKeyDBPath, "sd"),
+			),
+			"drkey_db",
 		),
 		&cfg.SD,
 	)

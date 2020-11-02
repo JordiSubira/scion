@@ -6,5 +6,8 @@ proto_library(
         "daemon.proto",
     ],
     visibility = ["//visibility:public"],
-    deps = ["@com_google_protobuf//:timestamp_proto"],
+    deps = [
+        "@com_google_protobuf//:timestamp_proto",
+        "//proto/drkey/mgmt/v1:drkey",
+    ],
 )

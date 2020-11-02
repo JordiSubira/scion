@@ -25,6 +25,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"google.golang.org/grpc"
 
+	"github.com/scionproto/scion/go/lib/drkeystorage"
 	"github.com/scionproto/scion/go/lib/env"
 	"github.com/scionproto/scion/go/lib/infra/modules/itopo"
 	"github.com/scionproto/scion/go/lib/log"
@@ -90,10 +91,11 @@ func TrustEngine(cfgDir string, db trust.DB, dialer libgrpc.Dialer) (trust.Engin
 
 // ServerCfg is the configuration for the API server.
 type ServerCfg struct {
-	Fetcher  fetcher.Fetcher
-	PathDB   pathdb.PathDB
-	RevCache revcache.RevCache
-	Engine   trust.Engine
+	Fetcher    fetcher.Fetcher
+	PathDB     pathdb.PathDB
+	RevCache   revcache.RevCache
+	Engine     trust.Engine
+	DRKeyStore drkeystorage.ClientStore
 }
 
 // GRPCServer creates function that will serve the SCION daemon API via gRPC.
@@ -115,6 +117,7 @@ func GRPCServer(listen string, cfg ServerCfg) func() error {
 			ASInspector:  cfg.Engine.Inspector,
 			RevCache:     cfg.RevCache,
 			TopoProvider: itopo.Provider(),
+			DRKeyStore:   cfg.DRKeyStore,
 			Metrics: servers.Metrics{
 				PathsRequests: servers.RequestMetrics{
 					Requests: metrics.NewPromCounterFrom(prometheus.CounterOpts{
