@@ -27,6 +27,7 @@ import (
 	"github.com/scionproto/scion/go/lib/common"
 	"github.com/scionproto/scion/go/lib/ctrl/path_mgmt"
 	"github.com/scionproto/scion/go/lib/ctrl/seg"
+	"github.com/scionproto/scion/go/lib/drkeystorage"
 	"github.com/scionproto/scion/go/lib/infra/modules/cleaner"
 	"github.com/scionproto/scion/go/lib/infra/modules/seghandler"
 	"github.com/scionproto/scion/go/lib/pathdb"
@@ -35,6 +36,7 @@ import (
 	"github.com/scionproto/scion/go/lib/snet"
 	"github.com/scionproto/scion/go/lib/snet/addrutil"
 	"github.com/scionproto/scion/go/lib/topology"
+	"github.com/scionproto/scion/go/pkg/cs/drkey"
 	"github.com/scionproto/scion/go/pkg/trust"
 )
 
@@ -52,6 +54,7 @@ type TasksConfig struct {
 	BeaconStore     Store
 	Signer          seg.Signer
 	Inspector       trust.Inspector
+	DRKeyStore      drkeystorage.ServiceStore
 
 	MACGen       func() hash.Hash
 	TopoProvider topology.Provider
@@ -60,6 +63,7 @@ type TasksConfig struct {
 	OriginationInterval  time.Duration
 	PropagationInterval  time.Duration
 	RegistrationInterval time.Duration
+	DRKeyEpochInterval   time.Duration
 
 	AllowIsdLoop bool
 }
@@ -154,14 +158,42 @@ func (t *TasksConfig) extender(task string, ia addr.IA, mtu uint16,
 	}
 }
 
+func (t *TasksConfig) DRKeyCleaner() *periodic.Runner {
+	if t.DRKeyStore == nil {
+		return nil
+	}
+	// TODO(juagargi): if there has been a change in the duration, we need to keep
+	// the already sent keys (and their duration) as they were already handed to other entities
+	cleanerPeriod := 2 * t.DRKeyEpochInterval
+	return periodic.Start(drkeystorage.NewStoreCleaner(t.DRKeyStore),
+		cleanerPeriod, cleanerPeriod)
+}
+
+func (t *TasksConfig) DRKeyPrefetcher() *periodic.Runner {
+	if t.DRKeyStore == nil {
+		return nil
+	}
+	topo := t.TopoProvider.Get()
+	prefetchPeriod := t.DRKeyEpochInterval / 2
+	return periodic.Start(
+		&drkey.Prefetcher{
+			LocalIA:     topo.IA(),
+			Store:       t.DRKeyStore,
+			KeyDuration: t.DRKeyEpochInterval,
+		},
+		prefetchPeriod, prefetchPeriod)
+}
+
 // Tasks keeps track of the running tasks.
 type Tasks struct {
-	Originator *periodic.Runner
-	Propagator *periodic.Runner
-	Registrars []*periodic.Runner
+	Originator      *periodic.Runner
+	Propagator      *periodic.Runner
+	Registrars      []*periodic.Runner
+	DRKeyPrefetcher *periodic.Runner
 
 	BeaconCleaner *periodic.Runner
 	PathCleaner   *periodic.Runner
+	DRKeyCleaner  *periodic.Runner
 }
 
 func StartTasks(cfg TasksConfig) (*Tasks, error) {
@@ -171,9 +203,10 @@ func StartTasks(cfg TasksConfig) (*Tasks, error) {
 	segCleaner := pathdb.NewCleaner(cfg.PathDB, "ps_segments")
 	segRevCleaner := revcache.NewCleaner(cfg.RevCache, "ps_revocation")
 	return &Tasks{
-		Originator: cfg.Originator(),
-		Propagator: cfg.Propagator(),
-		Registrars: cfg.Registrars(),
+		Originator:      cfg.Originator(),
+		Propagator:      cfg.Propagator(),
+		Registrars:      cfg.Registrars(),
+		DRKeyPrefetcher: cfg.DRKeyPrefetcher(),
 		BeaconCleaner: periodic.Start(
 			periodic.Func{
 				Task: func(ctx context.Context) {
@@ -195,6 +228,7 @@ func StartTasks(cfg TasksConfig) (*Tasks, error) {
 			10*time.Second,
 			10*time.Second,
 		),
+		DRKeyCleaner: cfg.DRKeyCleaner(),
 	}, nil
 
 }
@@ -207,14 +241,18 @@ func (t *Tasks) Kill() {
 	killRunners([]*periodic.Runner{
 		t.Originator,
 		t.Propagator,
+		t.DRKeyPrefetcher,
 		t.BeaconCleaner,
 		t.PathCleaner,
+		t.DRKeyCleaner,
 	})
 	killRunners(t.Registrars)
 	t.Originator = nil
 	t.Propagator = nil
+	t.DRKeyPrefetcher = nil
 	t.BeaconCleaner = nil
 	t.PathCleaner = nil
+	t.DRKeyCleaner = nil
 	t.Registrars = nil
 }
 

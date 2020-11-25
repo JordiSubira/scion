@@ -28,6 +28,7 @@ import (
 
 	"github.com/scionproto/scion/go/lib/addr"
 	libconfig "github.com/scionproto/scion/go/lib/config"
+	"github.com/scionproto/scion/go/lib/drkeystorage"
 	"github.com/scionproto/scion/go/lib/env"
 	"github.com/scionproto/scion/go/lib/fatal"
 	"github.com/scionproto/scion/go/lib/infra/infraenv"
@@ -45,6 +46,8 @@ import (
 	sdpb "github.com/scionproto/scion/go/pkg/proto/daemon"
 	"github.com/scionproto/scion/go/pkg/sciond"
 	"github.com/scionproto/scion/go/pkg/sciond/config"
+	"github.com/scionproto/scion/go/pkg/sciond/drkey"
+	dk_grpc "github.com/scionproto/scion/go/pkg/sciond/drkey/grpc"
 	"github.com/scionproto/scion/go/pkg/sciond/fetcher"
 	"github.com/scionproto/scion/go/pkg/service"
 	"github.com/scionproto/scion/go/pkg/storage"
@@ -144,6 +147,25 @@ func run(file string) error {
 		return serrors.WrapStr("creating trust engine", err)
 	}
 
+	var drkeyStore drkeystorage.ClientStore
+	if cfg.DRKeyDB.Connection != "" {
+		ia := itopo.Get().IA()
+		drkeyDB, err := storage.NewDRKeyLvl2Storage(cfg.DRKeyDB)
+		if err != nil {
+			log.Error("Creating Lvl2 DRKey DB", "err", err)
+		}
+		defer drkeyDB.Close()
+
+		drkeyFetcher := dk_grpc.DRKeyFetcher{
+			Dialer: dialer,
+		}
+		drkeyStore = drkey.NewClientStore(ia, drkeyDB, drkeyFetcher)
+
+		drkeyCleaner := periodic.Start(drkeystorage.NewStoreCleaner(drkeyStore),
+			time.Hour, 10*time.Minute)
+		defer drkeyCleaner.Stop()
+	}
+
 	listen := sciond.APIAddress(cfg.SD.Address)
 	listener, err := net.Listen("tcp", listen)
 	if err != nil {
@@ -167,6 +189,7 @@ func run(file string) error {
 		PathDB:       pathDB,
 		RevCache:     revCache,
 		TopoProvider: itopo.Provider(),
+		DRKeyStore:   drkeyStore,
 	}))
 
 	go func() {
