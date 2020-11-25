@@ -18,6 +18,7 @@ import (
 	"context"
 	"crypto/tls"
 	"net"
+	"strings"
 
 	"google.golang.org/grpc/credentials"
 
@@ -88,7 +89,8 @@ func (e *nonTempWrapper) Temporary() bool {
 }
 
 func verifyConnection(cs tls.ConnectionState, serverName string) error {
-	serverIA, err := addr.IAFromString(serverName)
+	serverNameIA := strings.Split(serverName, ",")[0]
+	serverIA, err := addr.IAFromString(serverNameIA)
 	if err != nil {
 		return serrors.WrapStr("extracting IA from server name", err)
 	}
