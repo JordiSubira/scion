@@ -99,7 +99,6 @@ func (d *DRKeyServer) DRKeyLvl2(ctx context.Context,
 			"peer", peer, "err", err)
 		return nil, err
 	}
-	logger.Debug("[TO REMOVE]", "peer", peer)
 	if err := d.validateLvl2Req(parsedReq, peer.Addr); err != nil {
 		log.Error("[DRKey gRPC server] Error validating Lvl2 request",
 			"err", err)

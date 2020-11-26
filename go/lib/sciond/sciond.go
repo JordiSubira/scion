@@ -97,7 +97,8 @@ type Connector interface {
 	// RevNotification sends a RevocationInfo message to SCIOND.
 	RevNotification(ctx context.Context, sRevInfo *path_mgmt.SignedRevInfo) error
 	// DRKeyGetLvl2Key sends a DRKey Lvl2Key request to SCIOND
-	DRKeyGetLvl2Key(ctx context.Context, meta drkey.Lvl2Meta, valTime time.Time) (drkey.Lvl2Key, error)
+	DRKeyGetLvl2Key(ctx context.Context, meta drkey.Lvl2Meta,
+		valTime time.Time) (drkey.Lvl2Key, error)
 	// Close shuts down the connection to a SCIOND server.
 	Close(ctx context.Context) error
 }

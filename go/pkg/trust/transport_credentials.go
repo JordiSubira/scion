@@ -70,7 +70,7 @@ func (c *ClientCredentials) ClientHandshake(ctx context.Context, authority strin
 		}
 	}
 	// XXX (jonito): In Go1.13 tls.ConnectionState.ServerName is only set
-	// on ther server side. Thus, we pass authority as the serverName.
+	// on the server side. Thus, we pass authority as the serverName.
 	if err = verifyConnection(tlsInfo.State, authority); err != nil {
 		conn.Close()
 		return nil, nil, &nonTempWrapper{
