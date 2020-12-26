@@ -37,15 +37,15 @@ type Lvl2Meta struct {
 	Epoch    Epoch
 	SrcIA    addr.IA
 	DstIA    addr.IA
-	SrcHost  addr.HostAddr
-	DstHost  addr.HostAddr
+	SrcHost  []byte
+	DstHost  []byte
 }
 
 // Equal returns true if both meta are identical.
 func (m Lvl2Meta) Equal(other Lvl2Meta) bool {
 	return m.KeyType == other.KeyType && m.Protocol == other.Protocol &&
 		m.Epoch.Equal(other.Epoch) && m.SrcIA.Equal(other.SrcIA) && m.DstIA.Equal(other.DstIA) &&
-		m.SrcHost.Equal(other.SrcHost) && m.DstHost.Equal(other.DstHost)
+		bytes.Compare(m.SrcHost, other.SrcHost) == 0 && bytes.Compare(m.DstHost, other.DstHost) == 0
 }
 
 // Lvl2Key represents a level 2 DRKey.

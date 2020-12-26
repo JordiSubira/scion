@@ -45,7 +45,7 @@ func TestDeriveStandard(t *testing.T) {
 		assert.EqualValues(t, key, lvl2.Key)
 	}
 
-	dstHost := addr.HostFromIPStr("127.0.0.1")
+	dstHost := addr.HostFromIPStr("127.0.0.1").Pack()
 	protoToKey = map[string][]byte{
 		"foo":  xtest.MustParseHexString("84e628f7c9318d6831ff4f85827f7af3"),
 		"bar":  xtest.MustParseHexString("f51fa0769a6e3d2b9570eefb788a92c0"),
@@ -64,7 +64,7 @@ func TestDeriveStandard(t *testing.T) {
 		assert.EqualValues(t, key, lvl2.Key)
 	}
 
-	srcHost := addr.HostFromIPStr("127.0.0.2")
+	srcHost := addr.HostFromIPStr("127.0.0.2").Pack()
 	protoToKey = map[string][]byte{
 		"foo":  xtest.MustParseHexString("3ca3190844028277e05ebfaf3c2dd3b0"),
 		"bar":  xtest.MustParseHexString("b0bc9ccbd6ca923bdfbad7d1ad358960"),
@@ -112,7 +112,7 @@ func TestDeriveDelegated(t *testing.T) {
 			KeyType:  drkey.AS2Host,
 			SrcIA:    lvl1.SrcIA,
 			DstIA:    lvl1.DstIA,
-			DstHost:  addr.HostFromIPStr("127.0.0.1"),
+			DstHost:  addr.HostFromIPStr("127.0.0.1").Pack(),
 		}
 		lvl2, err := Delegated{}.DeriveLvl2(meta, lvl1)
 		require.NoError(t, err)
@@ -140,8 +140,8 @@ func TestDeriveDelegatedViaDS(t *testing.T) {
 		DstIA:    lvl2Key.DstIA,
 		Key:      lvl2Key.Key,
 	}
-	srcHost := addr.HostFromIPStr("1.1.1.1")
-	dstHost := addr.HostFromIPStr("2.2.2.2")
+	srcHost := addr.HostFromIPStr("1.1.1.1").Pack()
+	dstHost := addr.HostFromIPStr("2.2.2.2").Pack()
 	meta = drkey.Lvl2Meta{
 		Protocol: meta.Protocol,
 		KeyType:  drkey.Host2Host,

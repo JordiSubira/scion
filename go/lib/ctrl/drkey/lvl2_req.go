@@ -26,28 +26,10 @@ import (
 	dkpb "github.com/scionproto/scion/go/pkg/proto/drkey"
 )
 
-// Host represents a host part of a level 2 drkey.
-type Host struct {
-	Type addr.HostAddrType // uint8
-	Host []byte
-}
-
 // NewHost returns a new Host from an addr.HostAddr.
-func NewHost(host addr.HostAddr) Host {
+func getBytes(host []byte) []byte {
 	if host == nil {
-		host = addr.HostNone{}
-	}
-	return Host{
-		Type: host.Type(),
-		Host: host.Pack(),
-	}
-}
-
-// ToHostAddr returns the host as a addr.HostAddr.
-func (h *Host) ToHostAddr() addr.HostAddr {
-	host, err := addr.HostFromRaw(h.Host, addr.HostAddrType(h.Type))
-	if err != nil {
-		panic("Could not convert addr.HostAddr to drkey.Host")
+		return addr.HostNone{}.Pack()
 	}
 	return host
 }
@@ -59,8 +41,8 @@ type Lvl2Req struct {
 	ValTime  time.Time
 	SrcIA    addr.IA
 	DstIA    addr.IA
-	SrcHost  Host
-	DstHost  Host
+	SrcHost  []byte
+	DstHost  []byte
 	Misc     []byte
 }
 
@@ -72,8 +54,8 @@ func NewLvl2ReqFromMeta(meta drkey.Lvl2Meta, valTime time.Time) Lvl2Req {
 		ValTime:  valTime,
 		SrcIA:    meta.SrcIA,
 		DstIA:    meta.DstIA,
-		SrcHost:  NewHost(meta.SrcHost),
-		DstHost:  NewHost(meta.DstHost),
+		SrcHost:  getBytes(meta.SrcHost),
+		DstHost:  getBytes(meta.DstHost),
 	}
 }
 
@@ -84,8 +66,8 @@ func (c Lvl2Req) ToMeta() drkey.Lvl2Meta {
 		Protocol: c.Protocol,
 		SrcIA:    c.SrcIA,
 		DstIA:    c.DstIA,
-		SrcHost:  c.SrcHost.ToHostAddr(),
-		DstHost:  c.DstHost.ToHostAddr(),
+		SrcHost:  getBytes(c.SrcHost),
+		DstHost:  getBytes(c.DstHost),
 	}
 }
 
@@ -102,15 +84,9 @@ func RequestToLvl2Req(req *dkpb.DRKeyLvl2Request) (Lvl2Req, error) {
 		ValTime:  valTime,
 		SrcIA:    addr.IAInt(req.SrcIa).IA(),
 		DstIA:    addr.IAInt(req.DstIa).IA(),
-		SrcHost: Host{
-			Type: addr.HostAddrType(req.SrcHost.Type),
-			Host: req.SrcHost.Host,
-		},
-		DstHost: Host{
-			Type: addr.HostAddrType(req.DstHost.Type),
-			Host: req.DstHost.Host,
-		},
-		Misc: req.Misc,
+		SrcHost:  req.SrcHost,
+		DstHost:  req.DstHost,
+		Misc:     req.Misc,
 	}, nil
 }
 
@@ -149,14 +125,8 @@ func Lvl2reqToProtoRequest(req Lvl2Req) (*dkpb.DRKeyLvl2Request, error) {
 		DstIa:    uint64(req.DstIA.IAInt()),
 		SrcIa:    uint64(req.SrcIA.IAInt()),
 		ValTime:  valTime,
-		SrcHost: &dkpb.DRKeyLvl2Request_DRKeyHost{
-			Type: uint32(req.SrcHost.Type),
-			Host: req.SrcHost.Host,
-		},
-		DstHost: &dkpb.DRKeyLvl2Request_DRKeyHost{
-			Type: uint32(req.DstHost.Type),
-			Host: req.DstHost.Host,
-		},
+		SrcHost:  req.SrcHost,
+		DstHost:  req.DstHost,
 	}, nil
 }
 

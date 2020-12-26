@@ -66,17 +66,14 @@ func GetInputToDeriveLvl2Key(t *testing.T) (drkey.Lvl2Meta, drkey.Lvl1Key) {
 			DstIA: dstIA,
 		},
 	}
-
-	var srcHost addr.HostAddr = addr.HostNone{}
-	var dstHost addr.HostAddr = addr.HostNone{}
 	meta := drkey.Lvl2Meta{
 		KeyType:  drkey.AS2AS,
 		Protocol: "scmp",
 		Epoch:    lvl1Key.Epoch,
 		SrcIA:    srcIA,
 		DstIA:    dstIA,
-		SrcHost:  srcHost,
-		DstHost:  dstHost,
+		SrcHost:  []byte(addr.HostNone{}),
+		DstHost:  []byte(addr.HostNone{}),
 	}
 	return meta, lvl1Key
 }

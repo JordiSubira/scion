@@ -140,8 +140,7 @@ func TestRequestToLvl2Req(t *testing.T) {
 	dstIA := xtest.MustParseIA("1-ff00:0:110")
 	srcIA := xtest.MustParseIA("1-ff00:0:111")
 	reqType := drkey.Host2Host
-	hostType := addr.HostTypeSVC
-	hostAddr := addr.SvcCS
+	hostAddr := addr.HostFromIPStr("127.0.0.1")
 
 	req := &dkpb.DRKeyLvl2Request{
 		Protocol: "piskes",
@@ -149,14 +148,8 @@ func TestRequestToLvl2Req(t *testing.T) {
 		DstIa:    uint64(dstIA.IAInt()),
 		SrcIa:    uint64(srcIA.IAInt()),
 		ValTime:  valTime,
-		SrcHost: &dkpb.DRKeyLvl2Request_DRKeyHost{
-			Type: uint32(hostType),
-			Host: []byte(hostAddr.Pack()),
-		},
-		DstHost: &dkpb.DRKeyLvl2Request_DRKeyHost{
-			Type: uint32(hostType),
-			Host: []byte(hostAddr.Pack()),
-		},
+		SrcHost:  []byte(hostAddr.Pack()),
+		DstHost:  []byte(hostAddr.Pack()),
 	}
 
 	targetLvl2Req := ctrl.Lvl2Req{
@@ -165,14 +158,8 @@ func TestRequestToLvl2Req(t *testing.T) {
 		ValTime:  now,
 		SrcIA:    srcIA,
 		DstIA:    dstIA,
-		SrcHost: ctrl.Host{
-			Type: hostType,
-			Host: []byte(hostAddr.Pack()),
-		},
-		DstHost: ctrl.Host{
-			Type: hostType,
-			Host: []byte(hostAddr.Pack()),
-		},
+		SrcHost:  []byte(hostAddr.Pack()),
+		DstHost:  []byte(hostAddr.Pack()),
 	}
 
 	lvl2Req, err := ctrl.RequestToLvl2Req(req)
@@ -191,8 +178,8 @@ func TestKeyToLvl2Resp(t *testing.T) {
 		Epoch:    drkey.NewEpoch(0, 1),
 		SrcIA:    srcIA,
 		DstIA:    dstIA,
-		SrcHost:  addr.HostNone{},
-		DstHost:  addr.HostNone{},
+		SrcHost:  []byte(addr.HostNone{}),
+		DstHost:  []byte(addr.HostNone{}),
 	}
 	lvl2Key := drkey.Lvl2Key{
 		Lvl2Meta: meta,

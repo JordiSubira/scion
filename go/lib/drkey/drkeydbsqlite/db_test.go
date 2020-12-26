@@ -17,7 +17,6 @@ package drkeydbsqlite
 import (
 	"context"
 	"io/ioutil"
-	"net"
 	"os"
 	"testing"
 	"time"
@@ -39,8 +38,8 @@ var (
 	asMasterPassword = []byte("0123456789012345")
 	rawSrcIA         = []byte{0xF0, 0x11, 0xF2, 0x33, 0x44, 0x55, 0x66, 0x77}
 	rawDstIA         = []byte{0xF0, 0x11, 0xF2, 0x33, 0x44, 0x55, 0x66, 0x88}
-	SrcHostIP        = net.IPv4(192, 168, 1, 37)
-	DstHostIP        = net.IPv4(192, 168, 1, 38)
+	srcHost          = []byte(addr.HostFromIPStr("192.168.1.37").Pack())
+	dstHost          = []byte(addr.HostFromIPStr("192.168.1.38").Pack())
 )
 
 func TestDRKeyLvl1(t *testing.T) {
@@ -117,8 +116,8 @@ func TestDRKeyLvl2(t *testing.T) {
 		Epoch:    epoch,
 		SrcIA:    srcIA,
 		DstIA:    dstIA,
-		SrcHost:  addr.HostFromIP(SrcHostIP),
-		DstHost:  addr.HostFromIP(DstHostIP),
+		SrcHost:  srcHost,
+		DstHost:  dstHost,
 	}, drkeyLvl1)
 	require.NoError(t, err)
 
@@ -140,6 +139,38 @@ func TestDRKeyLvl2(t *testing.T) {
 		util.TimeToSecs(time.Now().Add(2*timeOffset*time.Second)))
 	require.NoError(t, err)
 	require.EqualValues(t, 1, rows)
+
+	// AS2AS
+	drkeyLvl2, err = standardImpl.DeriveLvl2(drkey.Lvl2Meta{
+		KeyType:  drkey.AS2AS,
+		Protocol: "test",
+		Epoch:    epoch,
+		SrcIA:    srcIA,
+		DstIA:    dstIA,
+		SrcHost:  addr.HostNone{}.Pack(),
+		DstHost:  addr.HostNone{}.Pack(),
+	}, drkeyLvl1)
+	require.NoError(t, err)
+
+	err = db.InsertLvl2Key(ctx, drkeyLvl2)
+	require.NoError(t, err)
+	err = db.InsertLvl2Key(ctx, drkeyLvl2)
+	require.NoError(t, err)
+
+	newKey, err = db.GetLvl2Key(ctx, drkeyLvl2.Lvl2Meta, util.TimeToSecs(time.Now()))
+	require.NoError(t, err)
+	require.Equal(t, drkeyLvl2.Key, newKey.Key)
+
+	rows, err = db.RemoveOutdatedLvl2Keys(ctx,
+		util.TimeToSecs(time.Now().Add(-timeOffset*time.Second)))
+	require.NoError(t, err)
+	require.EqualValues(t, 0, rows)
+
+	rows, err = db.RemoveOutdatedLvl2Keys(ctx,
+		util.TimeToSecs(time.Now().Add(2*timeOffset*time.Second)))
+	require.NoError(t, err)
+	require.EqualValues(t, 1, rows)
+
 }
 
 func TestGetMentionedASes(t *testing.T) {

@@ -126,8 +126,8 @@ func (d *DRKeyServer) DRKeyLvl2(ctx context.Context,
 		DstIA:    dstIA,
 		KeyType:  drkey.Lvl2KeyType(parsedReq.ReqType),
 		Protocol: parsedReq.Protocol,
-		SrcHost:  parsedReq.SrcHost.ToHostAddr(),
-		DstHost:  parsedReq.DstHost.ToHostAddr(),
+		SrcHost:  parsedReq.SrcHost,
+		DstHost:  parsedReq.DstHost,
 	}
 
 	lvl2Key, err := deriveLvl2(lvl2Meta, lvl1Key)
@@ -191,14 +191,14 @@ func (d *DRKeyServer) validateLvl2Req(req ctrl.Lvl2Req, peerAddr net.Addr) error
 	switch drkey.Lvl2KeyType(req.ReqType) {
 	case drkey.Host2Host:
 		if req.SrcIA == d.LocalIA {
-			if localAddr.Equal(req.SrcHost.ToHostAddr()) {
+			if localAddr.Equal(addr.HostFromIP(req.SrcHost)) {
 				break
 			}
 		}
 		fallthrough
 	case drkey.AS2Host:
 		if req.DstIA == d.LocalIA {
-			if localAddr.Equal(req.DstHost.ToHostAddr()) {
+			if localAddr.Equal(addr.HostFromIP(req.DstHost)) {
 				break
 			}
 		}
@@ -212,18 +212,18 @@ func (d *DRKeyServer) validateLvl2Req(req ctrl.Lvl2Req, peerAddr net.Addr) error
 			if _, found := protocolSet[req.Protocol]; found {
 				log.Debug("Authorized delegated secret",
 					"reqType", req.ReqType,
-					"requester address", localAddr,
-					"srcHost", req.SrcHost.ToHostAddr().String(),
-					"dstHost", req.DstHost.ToHostAddr().String(),
+					"requester address", localAddr.String(),
+					"srcHost", addr.HostFromIP(req.SrcHost).String(),
+					"dstHost", addr.HostFromIP(req.DstHost).String(),
 				)
 				return nil
 			}
 		}
 		return serrors.New("endhost not allowed for DRKey request",
 			"reqType", req.ReqType,
-			"endhost address", localAddr,
-			"srcHost", req.SrcHost.ToHostAddr().String(),
-			"dstHost", req.DstHost.ToHostAddr().String(),
+			"endhost address", localAddr.String(),
+			"srcHost", addr.HostFromIP(req.SrcHost).String(),
+			"dstHost", addr.HostFromIP(req.DstHost).String(),
 		)
 	default:
 		return serrors.New("unknown request type", "reqType", req.ReqType)

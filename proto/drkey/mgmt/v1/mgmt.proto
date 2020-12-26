@@ -44,12 +44,6 @@ message DRKeyLvl1Response{
 }
 
 message DRKeyLvl2Request{
-    message DRKeyHost{
-        // AddrType
-        uint32 type = 1;
-        // Host address
-        bytes host = 2;
-    }
     // Protocol identifier
     string protocol = 1;
     // Requested DRKeyProtoKeyType
@@ -61,9 +55,9 @@ message DRKeyLvl2Request{
     // Dst ISD-AS of the requested DRKey
     uint64 dst_ia = 5;
     // Src Host of the request DRKey (optional)
-    DRKeyHost src_host = 6;
+    bytes src_host = 6;
     // Dst Host of the request DRKey (optional)
-    DRKeyHost dst_host = 7;
+    bytes dst_host = 7;
     // Additional information (optional)
     bytes misc = 8;
 }

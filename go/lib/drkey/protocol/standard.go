@@ -43,25 +43,23 @@ func (p Standard) DeriveLvl2(meta drkey.Lvl2Meta, key drkey.Lvl1Key) (drkey.Lvl2
 	buffs := [][]byte{}
 	switch meta.KeyType {
 	case drkey.Host2Host:
-		if meta.SrcHost.Size() == 0 {
+		if len(meta.SrcHost) == 0 {
 			return drkey.Lvl2Key{}, errors.New("Level 2 DRKey requires a src host, but it is empty")
 		}
-		b := meta.SrcHost.Pack()
 		buffs = [][]byte{
-			b,
-			{byte(len(b))},
+			meta.SrcHost,
+			{byte(len(meta.SrcHost))},
 		}
-		pLen += len(b) + 1
+		pLen += len(meta.SrcHost) + 1
 		fallthrough
 	case drkey.AS2Host:
-		if meta.DstHost.Size() == 0 {
+		if len(meta.DstHost) == 0 {
 			return drkey.Lvl2Key{}, errors.New("Level 2 DRKey requires a dst host, but it is empty")
 		}
-		b := meta.DstHost.Pack()
 		buffs = append(buffs,
-			b,
-			[]byte{byte(len(b))})
-		pLen += len(b) + 1
+			meta.DstHost,
+			[]byte{byte(len(meta.DstHost))})
+		pLen += len(meta.DstHost) + 1
 		fallthrough
 	case drkey.AS2AS:
 		b := []byte(meta.Protocol)
