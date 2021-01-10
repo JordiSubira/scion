@@ -18,6 +18,8 @@ import (
 	"context"
 	"time"
 
+	grpc_retry "github.com/grpc-ecosystem/go-grpc-middleware/retry"
+
 	"github.com/scionproto/scion/go/lib/addr"
 	ctrl "github.com/scionproto/scion/go/lib/ctrl/drkey"
 	"github.com/scionproto/scion/go/lib/drkey"
@@ -69,7 +71,7 @@ func (f DRKeyFetcher) GetLvl1FromOtherCS(ctx context.Context,
 	}
 
 	// Use client to request lvl1 key, get Lvl1Rep
-	rep, err := client.DRKeyLvl1(ctx, req)
+	rep, err := client.DRKeyLvl1(ctx, req, grpc_retry.Disable())
 	if err != nil {
 		return drkey.Lvl1Key{}, serrors.WrapStr("requesting level 1 key", err)
 	}

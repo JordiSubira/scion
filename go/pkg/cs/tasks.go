@@ -235,10 +235,11 @@ func StartTasks(cfg TasksConfig) (*Tasks, error) {
 	segCleaner := pathdb.NewCleaner(cfg.PathDB, "control_pathstorage_segments")
 	segRevCleaner := revcache.NewCleaner(cfg.RevCache, "control_pathstorage_revocation")
 	return &Tasks{
-		Originator:      cfg.Originator(),
-		Propagator:      cfg.Propagator(),
-		Registrars:      cfg.SegmentWriters(),
-		DRKeyPrefetcher: cfg.DRKeyPrefetcher(),
+		Originator: cfg.Originator(),
+		Propagator: cfg.Propagator(),
+		Registrars: cfg.SegmentWriters(),
+		// DRKeyPrefetcher: cfg.DRKeyPrefetcher(),
+		DRKeyPrefetcher: nil,
 		BeaconCleaner: periodic.Start(
 			periodic.Func{
 				Task: func(ctx context.Context) {
