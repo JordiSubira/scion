@@ -18,6 +18,7 @@ go_library(
         "tls_handshake.go",
         "transport_credentials.go",
         "verifier.go",
+        "x509KeyPairProvider.go",
     ],
     importpath = "github.com/scionproto/scion/go/pkg/trust",
     visibility = ["//visibility:public"],
