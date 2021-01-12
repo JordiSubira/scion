@@ -27,7 +27,7 @@ import (
 	"github.com/scionproto/scion/go/lib/serrors"
 )
 
-// XXX(jordiSubira): ClientCredentials enables hooking a procedure to validate
+// XXX(JordiSubira): ClientCredentials enables hooking a procedure to validate
 // the TLS state during the client handshake. Note that the current implementation
 // extends the grpc/credentials callback for TLS credentials by carrying out the
 // validation after the handshake has been completed (this last using the provided
@@ -69,7 +69,7 @@ func (c *ClientCredentials) ClientHandshake(ctx context.Context, authority strin
 				"authInfoType", authInfo.AuthType()),
 		}
 	}
-	// XXX (jonito): In Go1.13 tls.ConnectionState.ServerName is only set
+	// XXX (JordiSubira): In Go1.13 tls.ConnectionState.ServerName is only set
 	// on the server side. Thus, we pass authority as the serverName.
 	if err = verifyConnection(tlsInfo.State, authority); err != nil {
 		conn.Close()

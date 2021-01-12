@@ -118,7 +118,7 @@ func TestLvl1KeyFetching(t *testing.T) {
 	require.NoError(t, err)
 }
 
-// XXX(jordiSubira) TestLvl1KeyFetching below checks correct Lvl1 key exchange as from Go1.15
+// XXX(JordiSubira) TestLvl1KeyFetching below checks correct Lvl1 key exchange as from Go1.15
 // which introduces VerifyConnection callback to access TLS state during handshake.
 
 // func TestLvl1KeyFetching(t *testing.T) {

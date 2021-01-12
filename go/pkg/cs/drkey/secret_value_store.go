@@ -26,7 +26,7 @@ import (
 
 // SecretValueStore keeps the current and next secret values and removes the expired ones.
 type SecretValueStore struct {
-	// TODO(jordiSubira): simplify class to be more consistent with keeping current and next
+	// TODO(JordiSubira): simplify class to be more consistent with keeping current and next
 	// secret values.
 	cache map[int64]drkey.SV
 	mutex sync.Mutex

@@ -32,7 +32,7 @@ var _ periodic.Task = (*Prefetcher)(nil)
 type Prefetcher struct {
 	LocalIA addr.IA
 	Store   drkeystorage.ServiceStore
-	// XXX(jonieto): At the moment we assume "global" KeyDuration, i.e.
+	// XXX(JordiSubira): At the moment we assume "global" KeyDuration, i.e.
 	// every AS involved uses the same EpochDuration. This will be improve
 	// further in the future, so that the prefetcher get keys in advance
 	// based on the epoch established by the AS which derived the first
