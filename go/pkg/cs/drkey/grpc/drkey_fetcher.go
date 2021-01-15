@@ -79,5 +79,10 @@ func (f DRKeyFetcher) GetLvl1FromOtherCS(ctx context.Context,
 		return drkey.Lvl1Key{}, serrors.WrapStr("obtaining level 1 key from reply", err)
 	}
 
+	if !(lvl1Key.SrcIA.Equal(srcIA)) {
+		return drkey.Lvl1Key{}, serrors.New("Response srcIA does not match intended server IA",
+			"srcIA", lvl1Key.SrcIA.String(), "server IA", srcIA)
+	}
+
 	return lvl1Key, nil
 }
