@@ -22,6 +22,7 @@ import (
 	"github.com/scionproto/scion/go/lib/addr"
 	"github.com/scionproto/scion/go/lib/drkey"
 	"github.com/scionproto/scion/go/lib/scrypto/cppki"
+	"github.com/scionproto/scion/go/lib/serrors"
 	dkpb "github.com/scionproto/scion/go/pkg/proto/drkey"
 )
 
@@ -45,11 +46,11 @@ func NewLvl1Req(dstIA addr.IA, valTime time.Time) Lvl1Req {
 func Lvl1reqToProtoRequest(req Lvl1Req) (*dkpb.DRKeyLvl1Request, error) {
 	valTime, err := ptypes.TimestampProto(req.ValTime)
 	if err != nil {
-		return nil, err
+		return nil, serrors.WrapStr("invalid valTime from request", err)
 	}
 	timestamp, err := ptypes.TimestampProto(req.Timestamp)
 	if err != nil {
-		return nil, err
+		return nil, serrors.WrapStr("invalid timeStamp from request", err)
 	}
 	return &dkpb.DRKeyLvl1Request{
 		DstIa:     uint64(req.DstIA.IAInt()),
@@ -63,11 +64,11 @@ func GetLvl1KeyFromReply(rep *dkpb.DRKeyLvl1Response) (drkey.Lvl1Key, error) {
 
 	epochBegin, err := ptypes.Timestamp(rep.EpochBegin)
 	if err != nil {
-		return drkey.Lvl1Key{}, err
+		return drkey.Lvl1Key{}, serrors.WrapStr("invalid EpochBegin from response", err)
 	}
 	epochEnd, err := ptypes.Timestamp(rep.EpochEnd)
 	if err != nil {
-		return drkey.Lvl1Key{}, err
+		return drkey.Lvl1Key{}, serrors.WrapStr("invalid EpochEnd from response", err)
 	}
 	epoch := drkey.Epoch{
 		Validity: cppki.Validity{
@@ -89,15 +90,15 @@ func GetLvl1KeyFromReply(rep *dkpb.DRKeyLvl1Response) (drkey.Lvl1Key, error) {
 func KeyToLvl1Resp(drkey drkey.Lvl1Key) (*dkpb.DRKeyLvl1Response, error) {
 	epochBegin, err := ptypes.TimestampProto(drkey.Epoch.NotBefore)
 	if err != nil {
-		return nil, err
+		return nil, serrors.WrapStr("invalid EpochBegin from key", err)
 	}
 	epochEnd, err := ptypes.TimestampProto(drkey.Epoch.NotAfter)
 	if err != nil {
-		return nil, err
+		return nil, serrors.WrapStr("invalid EpochEnd from key", err)
 	}
 	now, err := ptypes.TimestampProto(time.Now())
 	if err != nil {
-		return nil, err
+		return nil, serrors.WrapStr("invalid conversion to timestamp", err)
 	}
 
 	return &dkpb.DRKeyLvl1Response{
@@ -114,11 +115,11 @@ func KeyToLvl1Resp(drkey drkey.Lvl1Key) (*dkpb.DRKeyLvl1Response, error) {
 func RequestToLvl1Req(req *dkpb.DRKeyLvl1Request) (Lvl1Req, error) {
 	valTime, err := ptypes.Timestamp(req.ValTime)
 	if err != nil {
-		return Lvl1Req{}, err
+		return Lvl1Req{}, serrors.WrapStr("invalid valTime from pb req", err)
 	}
 	timestamp, err := ptypes.Timestamp(req.Timestamp)
 	if err != nil {
-		return Lvl1Req{}, err
+		return Lvl1Req{}, serrors.WrapStr("invalid timeStamp from pb req", err)
 	}
 
 	return Lvl1Req{

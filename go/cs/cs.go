@@ -393,12 +393,14 @@ func run(file string) error {
 		}
 		tlsMgr := trust.NewTLSCryptoManager(loader, trustDB)
 		drkeyFetcher := drkeygrpc.DRKeyFetcher{
-			Dialer: &libgrpc.TLSQUICDialer{
-				Rewriter:    nc.AddressRewriter(nil),
-				Dialer:      quicStack.TLSDialer,
-				Credentials: trust.GetTansportCredentials(tlsMgr),
+			Getter: drkeygrpc.Lvl1KeyFetcher{
+				Dialer: &libgrpc.TLSQUICDialer{
+					Rewriter:    nc.AddressRewriter(nil),
+					Dialer:      quicStack.TLSDialer,
+					Credentials: trust.GetTansportCredentials(tlsMgr),
+				},
+				Router: segreq.NewRouter(fetcherCfg),
 			},
-			Router: segreq.NewRouter(fetcherCfg),
 		}
 		drkeyServStore = &drkey.ServiceStore{
 			LocalIA:      topo.IA(),

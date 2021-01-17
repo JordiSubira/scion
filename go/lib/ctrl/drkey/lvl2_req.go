@@ -22,6 +22,7 @@ import (
 	"github.com/scionproto/scion/go/lib/addr"
 	"github.com/scionproto/scion/go/lib/drkey"
 	"github.com/scionproto/scion/go/lib/scrypto/cppki"
+	"github.com/scionproto/scion/go/lib/serrors"
 	dkpb "github.com/scionproto/scion/go/pkg/proto/drkey"
 )
 
@@ -92,7 +93,7 @@ func (c Lvl2Req) ToMeta() drkey.Lvl2Meta {
 func RequestToLvl2Req(req *dkpb.DRKeyLvl2Request) (Lvl2Req, error) {
 	valTime, err := ptypes.Timestamp(req.ValTime)
 	if err != nil {
-		return Lvl2Req{}, err
+		return Lvl2Req{}, serrors.WrapStr("invalid valTime from pb request", err)
 	}
 
 	return Lvl2Req{
@@ -117,15 +118,15 @@ func RequestToLvl2Req(req *dkpb.DRKeyLvl2Request) (Lvl2Req, error) {
 func KeyToLvl2Resp(drkey drkey.Lvl2Key) (*dkpb.DRKeyLvl2Response, error) {
 	epochBegin, err := ptypes.TimestampProto(drkey.Epoch.NotBefore)
 	if err != nil {
-		return nil, err
+		return nil, serrors.WrapStr("invalid EpochBegin from key", err)
 	}
 	epochEnd, err := ptypes.TimestampProto(drkey.Epoch.NotAfter)
 	if err != nil {
-		return nil, err
+		return nil, serrors.WrapStr("invalid EpochEnd from key", err)
 	}
 	now, err := ptypes.TimestampProto(time.Now())
 	if err != nil {
-		return nil, err
+		return nil, serrors.WrapStr("invalid conversion to timestamp", err)
 	}
 
 	return &dkpb.DRKeyLvl2Response{
@@ -140,7 +141,7 @@ func KeyToLvl2Resp(drkey drkey.Lvl2Key) (*dkpb.DRKeyLvl2Response, error) {
 func Lvl2reqToProtoRequest(req Lvl2Req) (*dkpb.DRKeyLvl2Request, error) {
 	valTime, err := ptypes.TimestampProto(req.ValTime)
 	if err != nil {
-		return nil, err
+		return nil, serrors.WrapStr("invalid valTime from request", err)
 	}
 	return &dkpb.DRKeyLvl2Request{
 		Protocol: req.Protocol,
@@ -164,11 +165,11 @@ func GetLvl2KeyFromReply(rep *dkpb.DRKeyLvl2Response, meta drkey.Lvl2Meta) (drke
 
 	epochBegin, err := ptypes.Timestamp(rep.EpochBegin)
 	if err != nil {
-		return drkey.Lvl2Key{}, err
+		return drkey.Lvl2Key{}, serrors.WrapStr("invalid EpochBegin from response", err)
 	}
 	epochEnd, err := ptypes.Timestamp(rep.EpochEnd)
 	if err != nil {
-		return drkey.Lvl2Key{}, err
+		return drkey.Lvl2Key{}, serrors.WrapStr("invalid EpochEnd from response", err)
 	}
 	epoch := drkey.Epoch{
 		Validity: cppki.Validity{
