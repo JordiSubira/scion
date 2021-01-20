@@ -49,8 +49,6 @@ func TestGetLvl1FromOtherCS(t *testing.T) {
 		"valid": {
 			getter: func(ctrl *gomock.Controller) dk_grpc.Lvl1KeyGetter {
 				rep := &dkpb.DRKeyLvl1Response{
-					DstIa:      uint64(dstIA.IAInt()),
-					SrcIa:      uint64(srcIA.IAInt()),
 					EpochBegin: epochBegin,
 					EpochEnd:   epochEnd,
 					Drkey:      key,
@@ -61,28 +59,11 @@ func TestGetLvl1FromOtherCS(t *testing.T) {
 			},
 			assertErr: assert.NoError,
 		},
-		"wrong_srcIA_rep": {
-			getter: func(ctrl *gomock.Controller) dk_grpc.Lvl1KeyGetter {
-				wrongSrcIA := xtest.MustParseIA("1-ff00:0:110")
-				rep := &dkpb.DRKeyLvl1Response{
-					DstIa:      uint64(dstIA.IAInt()),
-					SrcIa:      uint64(wrongSrcIA.IAInt()),
-					EpochBegin: epochBegin,
-					EpochEnd:   epochEnd,
-					Drkey:      key,
-				}
-				getter := mock_grpc.NewMockLvl1KeyGetter(ctrl)
-				getter.EXPECT().GetLvl1Key(gomock.Any(), gomock.Eq(srcIA), gomock.Any()).Return(rep, nil)
-				return getter
-			},
-			assertErr: assert.Error,
-		},
 	}
 
 	for name, tc := range testCases {
 		name, tc := name, tc
 		t.Run(name, func(t *testing.T) {
-			t.Parallel()
 			ctrl := gomock.NewController(t)
 			defer ctrl.Finish()
 

@@ -68,7 +68,6 @@ func TestLvl1KeyFetching(t *testing.T) {
 	chain, err := cppki.ReadPEMCerts(crt111File)
 	_ = chain
 	require.NoError(t, err)
-	ia111 := xtest.MustParseIA("1-ff00:0:111")
 
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
@@ -111,7 +110,7 @@ func TestLvl1KeyFetching(t *testing.T) {
 
 	client := cppb.NewDRKeyLvl1ServiceClient(conn)
 
-	lvl1req := pb_ctrl.NewLvl1Req(ia111, time.Now())
+	lvl1req := pb_ctrl.NewLvl1Req(time.Now())
 	req, err := pb_ctrl.Lvl1reqToProtoRequest(lvl1req)
 	require.NoError(t, err)
 	_, err = client.DRKeyLvl1(context.Background(), req)

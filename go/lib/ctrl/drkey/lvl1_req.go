@@ -28,15 +28,13 @@ import (
 
 // Lvl1Req represents a level 1 request between CS.
 type Lvl1Req struct {
-	DstIA     addr.IA
 	ValTime   time.Time
 	Timestamp time.Time
 }
 
 // NewLvl1Req returns a fresh Lvl1Req
-func NewLvl1Req(dstIA addr.IA, valTime time.Time) Lvl1Req {
+func NewLvl1Req(valTime time.Time) Lvl1Req {
 	return Lvl1Req{
-		DstIA:     dstIA,
 		ValTime:   valTime,
 		Timestamp: time.Now(),
 	}
@@ -53,14 +51,13 @@ func Lvl1reqToProtoRequest(req Lvl1Req) (*dkpb.DRKeyLvl1Request, error) {
 		return nil, serrors.WrapStr("invalid timeStamp from request", err)
 	}
 	return &dkpb.DRKeyLvl1Request{
-		DstIa:     uint64(req.DstIA.IAInt()),
 		ValTime:   valTime,
 		Timestamp: timestamp,
 	}, nil
 }
 
 // GetLvl1KeyFromReply extracts the level 1 drkey from the reply.
-func GetLvl1KeyFromReply(rep *dkpb.DRKeyLvl1Response) (drkey.Lvl1Key, error) {
+func GetLvl1KeyFromReply(srcIA, dstIA addr.IA, rep *dkpb.DRKeyLvl1Response) (drkey.Lvl1Key, error) {
 
 	epochBegin, err := ptypes.Timestamp(rep.EpochBegin)
 	if err != nil {
@@ -78,8 +75,8 @@ func GetLvl1KeyFromReply(rep *dkpb.DRKeyLvl1Response) (drkey.Lvl1Key, error) {
 	}
 	return drkey.Lvl1Key{
 		Lvl1Meta: drkey.Lvl1Meta{
-			SrcIA: addr.IAInt(rep.SrcIa).IA(),
-			DstIA: addr.IAInt(rep.DstIa).IA(),
+			SrcIA: srcIA,
+			DstIA: dstIA,
 			Epoch: epoch,
 		},
 		Key: drkey.DRKey(rep.Drkey),
@@ -102,8 +99,6 @@ func KeyToLvl1Resp(drkey drkey.Lvl1Key) (*dkpb.DRKeyLvl1Response, error) {
 	}
 
 	return &dkpb.DRKeyLvl1Response{
-		DstIa:      uint64(drkey.DstIA.IAInt()),
-		SrcIa:      uint64(drkey.SrcIA.IAInt()),
 		EpochBegin: epochBegin,
 		EpochEnd:   epochEnd,
 		Drkey:      []byte(drkey.Key),
@@ -123,7 +118,6 @@ func RequestToLvl1Req(req *dkpb.DRKeyLvl1Request) (Lvl1Req, error) {
 	}
 
 	return Lvl1Req{
-		DstIA:     addr.IAInt(req.DstIa).IA(),
 		ValTime:   valTime,
 		Timestamp: timestamp,
 	}, nil

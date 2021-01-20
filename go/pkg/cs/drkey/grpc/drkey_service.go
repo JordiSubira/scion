@@ -61,16 +61,16 @@ func (d *DRKeyServer) DRKeyLvl1(ctx context.Context,
 		return nil, err
 	}
 
-	// validating peer Subject.IA == req.dstIA
-	if err = exchange.ValitadePeerWithCert(peer, parsedReq.DstIA); err != nil {
-		logger.Error("[DRKey gRPC server] Error validating requested dstIA with certicate",
+	dstIA, err := exchange.ExtractIAFromPeer(peer)
+	if err != nil {
+		logger.Error("[DRKey gRPC server] Error retrieving auth info from certicate",
 			"err", err)
-		return nil, serrors.WrapStr("validating requested dstIA", err)
+		return nil, serrors.WrapStr("retrieving info from certficate", err)
 	}
 
 	logger.Debug("[DRKey gRPC server] Received Lvl1 request",
-		"lvl1_req", parsedReq, "peer", peer.Addr.String())
-	lvl1Key, err := d.Store.DeriveLvl1(parsedReq.DstIA, parsedReq.ValTime)
+		"lvl1_req", parsedReq, "peer", peer.Addr.String(), "IA from cert", (*dstIA).String())
+	lvl1Key, err := d.Store.DeriveLvl1(*dstIA, parsedReq.ValTime)
 	if err != nil {
 		logger.Error("Error deriving level 1 key", "err", err)
 		return nil, err

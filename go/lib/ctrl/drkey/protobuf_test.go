@@ -38,16 +38,12 @@ func TestLvl1reqToProtoRequest(t *testing.T) {
 	timestamp, err := ptypes.TimestampProto(now)
 	require.NoError(t, err)
 
-	dstIA := xtest.MustParseIA("1-ff00:0:110")
-
 	pbReq := &dkpb.DRKeyLvl1Request{
-		DstIa:     uint64(dstIA.IAInt()),
 		ValTime:   valTime,
 		Timestamp: timestamp,
 	}
 
 	lvl1Req := ctrl.Lvl1Req{
-		DstIA:     dstIA,
 		ValTime:   now,
 		Timestamp: now,
 	}
@@ -65,17 +61,13 @@ func TestRequestToLvl1Req(t *testing.T) {
 	timestamp, err := ptypes.TimestampProto(now)
 	require.NoError(t, err)
 
-	dstIA := xtest.MustParseIA("1-ff00:0:110").IAInt()
-
 	req := &dkpb.DRKeyLvl1Request{
-		DstIa:     uint64(dstIA),
 		ValTime:   valTime,
 		Timestamp: timestamp,
 	}
 
 	lvl1Req, err := ctrl.RequestToLvl1Req(req)
 	require.NoError(t, err)
-	assert.Equal(t, xtest.MustParseIA("1-ff00:0:110"), lvl1Req.DstIA)
 	assert.Equal(t, now, lvl1Req.ValTime)
 	assert.Equal(t, now, lvl1Req.Timestamp)
 }
@@ -99,8 +91,6 @@ func TestKeyToLvl1Resp(t *testing.T) {
 	}
 
 	targetResp := &dkpb.DRKeyLvl1Response{
-		DstIa:      uint64(dstIA.IAInt()),
-		SrcIa:      uint64(srcIA.IAInt()),
 		EpochBegin: epochBegin,
 		EpochEnd:   epochEnd,
 		Drkey:      []byte(k),
@@ -123,8 +113,6 @@ func TestGetLvl1KeyFromReply(t *testing.T) {
 	k := xtest.MustParseHexString("c584cad32613547c64823c756651b6f5") // just a level 1 key
 
 	resp := &dkpb.DRKeyLvl1Response{
-		DstIa:      uint64(dstIA.IAInt()),
-		SrcIa:      uint64(srcIA.IAInt()),
 		EpochBegin: epochBegin,
 		EpochEnd:   epochEnd,
 		Drkey:      []byte(k),
@@ -139,7 +127,7 @@ func TestGetLvl1KeyFromReply(t *testing.T) {
 		Key: k,
 	}
 
-	lvl1Key, err := ctrl.GetLvl1KeyFromReply(resp)
+	lvl1Key, err := ctrl.GetLvl1KeyFromReply(srcIA, dstIA, resp)
 	require.NoError(t, err)
 	assert.Equal(t, targetLvl1Key, lvl1Key)
 

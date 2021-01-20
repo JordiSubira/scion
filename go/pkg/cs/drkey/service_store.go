@@ -53,6 +53,13 @@ func (s *ServiceStore) GetLvl1Key(ctx context.Context, meta drkey.Lvl1Meta,
 	if meta.SrcIA == s.LocalIA {
 		return s.DeriveLvl1(meta.DstIA, valTime)
 	}
+
+	if meta.DstIA != s.LocalIA {
+		return drkey.Lvl1Key{},
+			serrors.New("Neither srcIA nor dstIA matches localIA", "srcIA", meta.SrcIA,
+				"dstIA", meta.DstIA, "localIA", s.LocalIA)
+	}
+
 	// look in the DB
 	k, err := s.DB.GetLvl1Key(ctx, meta, util.TimeToSecs(valTime))
 	if err == nil {

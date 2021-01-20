@@ -21,28 +21,22 @@ package proto.drkey.mgmt.v1;
 import "google/protobuf/timestamp.proto";
 
 message DRKeyLvl1Request{
-    // Dst ISD-AS of the requested DRKey
-    uint64 dst_ia = 1;
     // Point in time where requested DRKey is valid. Used to identify the epoch
-    google.protobuf.Timestamp val_time = 2;
+    google.protobuf.Timestamp val_time = 1;
     // Point in time when the request was created
-    google.protobuf.Timestamp timestamp = 3;
+    google.protobuf.Timestamp timestamp = 2;
 
 }
 
 message DRKeyLvl1Response{
-    // Dst ISD-AS of the DRKey
-    uint64 dst_ia = 1;
-    // src ISD-AS of the DRKey
-    uint64 src_ia = 2; 
     // Begin of validity period of DRKey
-    google.protobuf.Timestamp epoch_begin = 3;
+    google.protobuf.Timestamp epoch_begin = 1;
     // End of validity period of DRKey
-    google.protobuf.Timestamp epoch_end = 4;
+    google.protobuf.Timestamp epoch_end = 2;
     // Lvl1 DRKey
-    bytes drkey = 5;
+    bytes drkey = 3;
     // Creation time of this reply
-    google.protobuf.Timestamp timestamp = 6;
+    google.protobuf.Timestamp timestamp = 4;
 }
 
 message DRKeyLvl2Request{

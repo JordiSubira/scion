@@ -23,20 +23,16 @@ import (
 	"github.com/scionproto/scion/go/lib/serrors"
 )
 
-func ValitadePeerWithCert(peer *peer.Peer, ia addr.IA) error {
+func ExtractIAFromPeer(peer *peer.Peer) (*addr.IA, error) {
 	tlsInfo, ok := peer.AuthInfo.(credentials.TLSInfo)
 	if !ok {
-		return serrors.New("auth info is not of type TLS info",
+		return nil, serrors.New("auth info is not of type TLS info",
 			"peer", peer, "authType", peer.AuthInfo.AuthType())
 	}
 	chain := tlsInfo.State.PeerCertificates
 	certIA, err := cppki.ExtractIA(chain[0].Subject)
 	if err != nil {
-		return serrors.WrapStr("extracting IA from peer cert", err)
+		return nil, serrors.WrapStr("extracting IA from peer cert", err)
 	}
-	if !ia.Equal(*certIA) {
-		return serrors.New("peer IA from cert and requested IA do not match",
-			"peer IA", certIA, "req IA", ia)
-	}
-	return nil
+	return certIA, nil
 }
