@@ -31,7 +31,8 @@ import (
 )
 
 type Lvl1KeyGetter interface {
-	GetLvl1Key(ctx context.Context, srcIA addr.IA, req *dkpb.DRKeyLvl1Request) (*dkpb.DRKeyLvl1Response, error)
+	GetLvl1Key(ctx context.Context, srcIA addr.IA,
+		req *dkpb.DRKeyLvl1Request) (*dkpb.DRKeyLvl1Response, error)
 }
 
 type Lvl1KeyFetcher struct {
@@ -41,7 +42,8 @@ type Lvl1KeyFetcher struct {
 
 var _ Lvl1KeyGetter = (*Lvl1KeyFetcher)(nil)
 
-func (f Lvl1KeyFetcher) GetLvl1Key(ctx context.Context, srcIA addr.IA, req *dkpb.DRKeyLvl1Request) (*dkpb.DRKeyLvl1Response, error) {
+func (f Lvl1KeyFetcher) GetLvl1Key(ctx context.Context, srcIA addr.IA,
+	req *dkpb.DRKeyLvl1Request) (*dkpb.DRKeyLvl1Response, error) {
 	logger := log.FromCtx(ctx)
 
 	logger.Info("Resolving server", "srcIA", srcIA.String())

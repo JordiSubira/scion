@@ -54,7 +54,8 @@ func TestGetLvl1FromOtherCS(t *testing.T) {
 					Drkey:      key,
 				}
 				getter := mock_grpc.NewMockLvl1KeyGetter(ctrl)
-				getter.EXPECT().GetLvl1Key(gomock.Any(), gomock.Eq(srcIA), gomock.Any()).Return(rep, nil)
+				getter.EXPECT().GetLvl1Key(gomock.Any(), gomock.Eq(srcIA),
+					gomock.Any()).Return(rep, nil)
 				return getter
 			},
 			assertErr: assert.NoError,

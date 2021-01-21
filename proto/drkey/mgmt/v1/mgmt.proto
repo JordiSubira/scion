@@ -20,6 +20,8 @@ package proto.drkey.mgmt.v1;
 
 import "google/protobuf/timestamp.proto";
 
+// DRKeyLvl1Request leaves out the 'dstIA' field which can be extracted from
+// the transport itself (ideally from authenticated information). 
 message DRKeyLvl1Request{
     // Point in time where requested DRKey is valid. Used to identify the epoch
     google.protobuf.Timestamp val_time = 1;
@@ -28,6 +30,8 @@ message DRKeyLvl1Request{
 
 }
 
+// DRKeyLvl1Response leaves out the 'dstIA' and 'srcIA' fields which can be
+// extracted from the transport itself (ideally from authenticated information).
 message DRKeyLvl1Response{
     // Begin of validity period of DRKey
     google.protobuf.Timestamp epoch_begin = 1;
