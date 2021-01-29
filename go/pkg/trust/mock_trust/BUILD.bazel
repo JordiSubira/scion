@@ -13,6 +13,7 @@ gomock(
         "Recurser",
         "Router",
         "X509KeyPairLoader",
+        "KeyLoader",
     ],
     library = "//go/pkg/trust:go_default_library",
     package = "mock_trust",

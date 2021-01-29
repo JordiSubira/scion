@@ -387,9 +387,17 @@ func run(file string) error {
 		if err != nil {
 			return serrors.WrapStr("initializing DRKey DB", err)
 		}
-		loader := trust.FileLoader{
-			CertFile: cfg.DRKey.CertFile,
-			KeyFile:  cfg.DRKey.KeyFile,
+		// loader := trust.FileLoader{
+		// 	CertFile: cfg.DRKey.CertFile,
+		// 	KeyFile:  cfg.DRKey.KeyFile,
+		// }
+		loader := trust.X509KeyPairProvider{
+			IA:      topo.IA(),
+			DB:      trustDB,
+			Timeout: 5 * time.Second,
+			Loader: trust.KeyProvider{
+				Dir: filepath.Join(cfg.General.ConfigDir, "crypto/as"),
+			},
 		}
 		tlsMgr := trust.NewTLSCryptoManager(loader, trustDB)
 		drkeyFetcher := drkeygrpc.DRKeyFetcher{
