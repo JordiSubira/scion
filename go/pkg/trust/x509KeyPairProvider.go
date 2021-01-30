@@ -41,7 +41,7 @@ type X509KeyPairProvider struct {
 
 var _ X509KeyPairLoader = (*X509KeyPairProvider)(nil)
 
-func (p X509KeyPairProvider) LoadX509KeyPair() (*tls.Certificate, error) {
+func (p X509KeyPairProvider) LoadX509KeyPair(extKeyUsages []x509.ExtKeyUsage) (*tls.Certificate, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), p.Timeout)
 	defer cancel()
 
@@ -64,7 +64,7 @@ func (p X509KeyPairProvider) LoadX509KeyPair() (*tls.Certificate, error) {
 	var bestKey []byte
 	var bestExpiry time.Time
 	for _, key := range keys {
-		cert, expiry, err := p.bestKeyPair(ctx, trcs, key)
+		cert, expiry, err := p.bestKeyPair(ctx, trcs, extKeyUsages, key)
 		if err != nil {
 			log.Error("Error getting best key pair", "err", err)
 			return nil, err
@@ -92,7 +92,8 @@ func (p X509KeyPairProvider) LoadX509KeyPair() (*tls.Certificate, error) {
 	return &certTLS, nil
 }
 
-func (p X509KeyPairProvider) bestKeyPair(ctx context.Context, trcs []cppki.SignedTRC, rawKey []byte) ([]*x509.Certificate, time.Time, error) {
+func (p X509KeyPairProvider) bestKeyPair(ctx context.Context, trcs []cppki.SignedTRC,
+	extKeyUsages []x509.ExtKeyUsage, rawKey []byte) ([]*x509.Certificate, time.Time, error) {
 	key, err := x509.ParsePKCS8PrivateKey(rawKey)
 	if err != nil {
 		return nil, time.Time{}, nil
@@ -113,7 +114,11 @@ func (p X509KeyPairProvider) bestKeyPair(ctx context.Context, trcs []cppki.Signe
 	if err != nil {
 		return nil, time.Time{}, err
 	}
-	chain := bestChain(&trcs[0].TRC, chains)
+	opts := cppki.VerifyOptions{
+		TRC:         &trcs[0].TRC,
+		ExtKeyUsage: extKeyUsages,
+	}
+	chain := bestChain(chains, opts)
 	if chain == nil && len(trcs) == 1 {
 		return nil, time.Time{}, nil
 	}
@@ -121,7 +126,8 @@ func (p X509KeyPairProvider) bestKeyPair(ctx context.Context, trcs []cppki.Signe
 	// Attempt to find a chain that is verifiable only in grace period. If we
 	// have not found a chain yet.
 	if chain == nil && len(trcs) == 2 {
-		chain = bestChain(&trcs[1].TRC, chains)
+		opts.TRC = &trcs[1].TRC
+		chain = bestChain(chains, opts)
 		if chain == nil {
 			return nil, time.Time{}, nil
 		}

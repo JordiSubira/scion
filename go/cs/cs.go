@@ -387,10 +387,6 @@ func run(file string) error {
 		if err != nil {
 			return serrors.WrapStr("initializing DRKey DB", err)
 		}
-		// loader := trust.FileLoader{
-		// 	CertFile: cfg.DRKey.CertFile,
-		// 	KeyFile:  cfg.DRKey.KeyFile,
-		// }
 		loader := trust.X509KeyPairProvider{
 			IA:      topo.IA(),
 			DB:      trustDB,
@@ -424,7 +420,7 @@ func run(file string) error {
 		srvConfig := &tls.Config{
 			InsecureSkipVerify:    true,
 			GetCertificate:        tlsMgr.GetCertificate,
-			VerifyPeerCertificate: tlsMgr.VerifyPeerCertificate,
+			VerifyPeerCertificate: tlsMgr.VerifyClientCertificate,
 			ClientAuth:            tls.RequireAnyClientCert,
 		}
 		quicTLSServer = grpc.NewServer(

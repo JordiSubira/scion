@@ -122,6 +122,7 @@ func ReadPEMCerts(file string) ([]*x509.Certificate, error) {
 type VerifyOptions struct {
 	TRC         *TRC
 	CurrentTime time.Time // if zero, the current time is used
+	ExtKeyUsage []x509.ExtKeyUsage
 }
 
 // VerifyChain attempts to verify the certificate chain by iterating over the

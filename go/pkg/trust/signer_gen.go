@@ -103,7 +103,8 @@ func (s *SignerGen) bestForKey(ctx context.Context, key crypto.Signer,
 		// TODO	metrics.Signer.Generate(l.WithResult(metrics.ErrDB)).Inc()
 		return nil, err
 	}
-	chain := bestChain(&trcs[0].TRC, chains)
+	opts := cppki.VerifyOptions{TRC: &trcs[0].TRC}
+	chain := bestChain(chains, opts)
 	if chain == nil && len(trcs) == 1 {
 		return nil, nil
 	}
@@ -111,7 +112,8 @@ func (s *SignerGen) bestForKey(ctx context.Context, key crypto.Signer,
 	// Attempt to find a chain that is verifiable only in grace period. If we
 	// have not found a chain yet.
 	if chain == nil && len(trcs) == 2 {
-		chain = bestChain(&trcs[1].TRC, chains)
+		opts.TRC = &trcs[1].TRC
+		chain = bestChain(chains, opts)
 		if chain == nil {
 			return nil, nil
 		}
@@ -137,12 +139,17 @@ func (s *SignerGen) bestForKey(ctx context.Context, key crypto.Signer,
 	}, nil
 }
 
-func bestChain(trc *cppki.TRC, chains [][]*x509.Certificate) []*x509.Certificate {
-	opts := cppki.VerifyOptions{TRC: trc}
+func bestChain(chains [][]*x509.Certificate, opts cppki.VerifyOptions) []*x509.Certificate {
 	var best []*x509.Certificate
 	for _, chain := range chains {
 		if err := cppki.VerifyChain(chain, opts); err != nil {
 			continue
+		}
+		if opts.ExtKeyUsage != nil {
+			//Verify extended key usage
+			if err := verifyExtendedKeyUsage(chain[0], opts.ExtKeyUsage); err != nil {
+				continue
+			}
 		}
 		if len(best) > 0 && chain[0].NotAfter.Before(best[0].NotAfter) {
 			continue

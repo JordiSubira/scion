@@ -78,7 +78,7 @@ func TestLvl1KeyFetching(t *testing.T) {
 	mgrdb := mock_trust.NewMockDB(ctrl)
 	mgrdb.EXPECT().SignedTRC(gomock.Any(), gomock.Any()).AnyTimes().Return(trc, nil)
 	loader := mock_trust.NewMockX509KeyPairLoader(ctrl)
-	loader.EXPECT().LoadX509KeyPair().AnyTimes().Return(&tlsCert, nil)
+	loader.EXPECT().LoadX509KeyPair(gomock.Any()).AnyTimes().Return(&tlsCert, nil)
 	mgr := trust.NewTLSCryptoManager(loader, mgrdb)
 
 	drkeyServ := &dk_grpc.DRKeyServer{
@@ -88,7 +88,7 @@ func TestLvl1KeyFetching(t *testing.T) {
 	serverConf := &tls.Config{
 		InsecureSkipVerify:    true,
 		GetCertificate:        mgr.GetCertificate,
-		VerifyPeerCertificate: mgr.VerifyPeerCertificate,
+		VerifyPeerCertificate: mgr.VerifyClientCertificate,
 		ClientAuth:            tls.RequireAnyClientCert,
 	}
 	serverCreds := credentials.NewTLS(serverConf)
@@ -96,7 +96,7 @@ func TestLvl1KeyFetching(t *testing.T) {
 	clientConf := &tls.Config{
 		InsecureSkipVerify:    true,
 		GetClientCertificate:  mgr.GetClientCertificate,
-		VerifyPeerCertificate: mgr.VerifyPeerCertificate,
+		VerifyPeerCertificate: mgr.VerifyServerCertificate,
 	}
 	clientCreds := trust.NewClientCredentials(clientConf)
 

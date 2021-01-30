@@ -57,6 +57,7 @@ func TestLoadX509KeyPair(t *testing.T) {
 	testCases := map[string]struct {
 		keyLoader    func(mctrcl *gomock.Controller) trust.KeyLoader
 		db           func(mctrcl *gomock.Controller) trust.DB
+		extKeyUsages []x509.ExtKeyUsage
 		assertFunc   assert.ErrorAssertionFunc
 		expectedCert func() *tls.Certificate
 	}{
@@ -83,7 +84,8 @@ func TestLoadX509KeyPair(t *testing.T) {
 				)
 				return db
 			},
-			assertFunc: assert.NoError,
+			extKeyUsages: []x509.ExtKeyUsage{x509.ExtKeyUsageAny},
+			assertFunc:   assert.NoError,
 			expectedCert: func() *tls.Certificate {
 				certPEM, keyPEM := trust.PairToEncodedPEM(chain, key)
 				certTLS, err := tls.X509KeyPair(certPEM, keyPEM)
@@ -126,7 +128,8 @@ func TestLoadX509KeyPair(t *testing.T) {
 				)
 				return db
 			},
-			assertFunc: assert.NoError,
+			extKeyUsages: []x509.ExtKeyUsage{x509.ExtKeyUsageAny},
+			assertFunc:   assert.NoError,
 			expectedCert: func() *tls.Certificate {
 				longer := getChain(t)
 				longer[0].NotAfter = longer[0].NotAfter.Add(time.Hour)
@@ -186,7 +189,8 @@ func TestLoadX509KeyPair(t *testing.T) {
 				)
 				return db
 			},
-			assertFunc: assert.NoError,
+			extKeyUsages: []x509.ExtKeyUsage{x509.ExtKeyUsageAny},
+			assertFunc:   assert.NoError,
 			expectedCert: func() *tls.Certificate {
 				longer := getChain(t)
 				longer[0].NotAfter = longer[0].NotAfter.Add(time.Hour)
@@ -210,7 +214,8 @@ func TestLoadX509KeyPair(t *testing.T) {
 			db: func(mctrl *gomock.Controller) trust.DB {
 				return mock_trust.NewMockDB(mctrl)
 			},
-			assertFunc: assert.Error,
+			extKeyUsages: []x509.ExtKeyUsage{x509.ExtKeyUsageAny},
+			assertFunc:   assert.Error,
 			expectedCert: func() *tls.Certificate {
 				return nil
 			},
@@ -236,7 +241,8 @@ func TestLoadX509KeyPair(t *testing.T) {
 				)
 				return db
 			},
-			assertFunc: assert.Error,
+			extKeyUsages: []x509.ExtKeyUsage{x509.ExtKeyUsageAny},
+			assertFunc:   assert.Error,
 			expectedCert: func() *tls.Certificate {
 				return nil
 			},
@@ -261,7 +267,8 @@ func TestLoadX509KeyPair(t *testing.T) {
 				db.EXPECT().Chains(gomock.Any(), matcher).Return(nil, nil)
 				return db
 			},
-			assertFunc: assert.Error,
+			extKeyUsages: []x509.ExtKeyUsage{x509.ExtKeyUsageAny},
+			assertFunc:   assert.Error,
 			expectedCert: func() *tls.Certificate {
 				return nil
 			},
@@ -281,7 +288,8 @@ func TestLoadX509KeyPair(t *testing.T) {
 					cppki.SignedTRC{}, serrors.New("fail"))
 				return db
 			},
-			assertFunc: assert.Error,
+			extKeyUsages: []x509.ExtKeyUsage{x509.ExtKeyUsageAny},
+			assertFunc:   assert.Error,
 			expectedCert: func() *tls.Certificate {
 				return nil
 			},
@@ -300,7 +308,8 @@ func TestLoadX509KeyPair(t *testing.T) {
 					cppki.SignedTRC{}, nil)
 				return db
 			},
-			assertFunc: assert.Error,
+			extKeyUsages: []x509.ExtKeyUsage{x509.ExtKeyUsageAny},
+			assertFunc:   assert.Error,
 			expectedCert: func() *tls.Certificate {
 				return nil
 			},
@@ -327,7 +336,79 @@ func TestLoadX509KeyPair(t *testing.T) {
 				)
 				return db
 			},
-			assertFunc: assert.Error,
+			extKeyUsages: []x509.ExtKeyUsage{x509.ExtKeyUsageAny},
+			assertFunc:   assert.Error,
+			expectedCert: func() *tls.Certificate {
+				return nil
+			},
+		},
+		"correct EKU": {
+			keyLoader: func(mctrl *gomock.Controller) trust.KeyLoader {
+				loader := mock_trust.NewMockKeyLoader(mctrl)
+				loader.EXPECT().GetKeys(gomock.Any()).Return(
+					[][]byte{key}, nil,
+				)
+				return loader
+			},
+			db: func(mctrl *gomock.Controller) trust.DB {
+				invalidExtChain := getChain(t)
+				invalidExtChain[0].ExtKeyUsage = []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth, x509.ExtKeyUsageTimeStamping}
+				validExtChain := getChain(t)
+				validExtChain[0].ExtKeyUsage = []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth, x509.ExtKeyUsageTimeStamping}
+				cert := validExtChain[0]
+				db := mock_trust.NewMockDB(mctrl)
+				matcher := chainQueryMatcher{
+					ia:   xtest.MustParseIA("1-ff00:0:110"),
+					skid: cert.SubjectKeyId,
+				}
+				db.EXPECT().SignedTRC(ctxMatcher{}, TRCIDMatcher{ISD: 1}).Return(
+					trc, nil,
+				)
+				db.EXPECT().Chains(gomock.Any(), matcher).Return(
+					[][]*x509.Certificate{invalidExtChain, validExtChain}, nil,
+				)
+				return db
+			},
+			extKeyUsages: []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
+			assertFunc:   assert.NoError,
+			expectedCert: func() *tls.Certificate {
+				validExtChain := getChain(t)
+				validExtChain[0].ExtKeyUsage = []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth, x509.ExtKeyUsageTimeStamping}
+				certPEM, keyPEM := trust.PairToEncodedPEM(validExtChain, key)
+				certTLS, err := tls.X509KeyPair(certPEM, keyPEM)
+				if err != nil {
+					panic("error loading expected pair")
+				}
+				return &certTLS
+			},
+		},
+		"wrong EKU": {
+			keyLoader: func(mctrl *gomock.Controller) trust.KeyLoader {
+				loader := mock_trust.NewMockKeyLoader(mctrl)
+				loader.EXPECT().GetKeys(gomock.Any()).Return(
+					[][]byte{key}, nil,
+				)
+				return loader
+			},
+			db: func(mctrl *gomock.Controller) trust.DB {
+				extChain := getChain(t)
+				extChain[0].ExtKeyUsage = []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth, x509.ExtKeyUsageTimeStamping}
+				cert := extChain[0]
+				db := mock_trust.NewMockDB(mctrl)
+				matcher := chainQueryMatcher{
+					ia:   xtest.MustParseIA("1-ff00:0:110"),
+					skid: cert.SubjectKeyId,
+				}
+				db.EXPECT().SignedTRC(ctxMatcher{}, TRCIDMatcher{ISD: 1}).Return(
+					trc, nil,
+				)
+				db.EXPECT().Chains(gomock.Any(), matcher).Return(
+					[][]*x509.Certificate{extChain}, nil,
+				)
+				return db
+			},
+			extKeyUsages: []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
+			assertFunc:   assert.Error,
 			expectedCert: func() *tls.Certificate {
 				return nil
 			},
@@ -346,7 +427,7 @@ func TestLoadX509KeyPair(t *testing.T) {
 				Timeout: 5 * time.Second,
 				Loader:  tc.keyLoader(mctrl),
 			}
-			tlsCert, err := provider.LoadX509KeyPair()
+			tlsCert, err := provider.LoadX509KeyPair(tc.extKeyUsages)
 			tc.assertFunc(t, err)
 			assert.Equal(t, tc.expectedCert(), tlsCert)
 		})
