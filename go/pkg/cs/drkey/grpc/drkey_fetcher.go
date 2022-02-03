@@ -46,6 +46,7 @@ func (f Lvl1KeyFetcher) GetLvl1Key(ctx context.Context, srcIA addr.IA,
 	req *dkpb.DRKeyLvl1Request) (*dkpb.DRKeyLvl1Response, error) {
 	logger := log.FromCtx(ctx)
 
+	t0 := time.Now()
 	logger.Info("Resolving server", "srcIA", srcIA.String())
 	path, err := f.Router.Route(ctx, srcIA)
 	if err != nil || path == nil {
@@ -67,6 +68,8 @@ func (f Lvl1KeyFetcher) GetLvl1Key(ctx context.Context, srcIA addr.IA,
 	if err != nil {
 		return nil, serrors.WrapStr("requesting level 1 key", err)
 	}
+	durationRequest := time.Since(t0)
+	logger.Debug("[INSTRUMENTING] DRKey Lvl1Fetching request", "duration", durationRequest.String())
 	return rep, nil
 }
 

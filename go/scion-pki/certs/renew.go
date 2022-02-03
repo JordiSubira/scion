@@ -570,6 +570,7 @@ func sendRequest(
 	req *cppb.ChainRenewalRequest,
 ) (*cppb.ChainRenewalResponse, error) {
 
+	t0 := time.Now()
 	dstSVC := &snet.SVCAddr{
 		IA:  dstIA,
 		SVC: addr.SvcCS,
@@ -586,6 +587,8 @@ func sendRequest(
 			"remote", conn.Target(),
 		)
 	}
+	durationRequest := time.Since(t0)
+	fmt.Println("[INSTRUMENTING] renewal request", "duration", durationRequest.String())
 	return reply, nil
 }
 

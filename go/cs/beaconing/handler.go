@@ -16,6 +16,7 @@ package beaconing
 
 import (
 	"context"
+	"time"
 
 	"github.com/opentracing/opentracing-go"
 
@@ -127,13 +128,17 @@ func (h Handler) verifySegment(ctx context.Context, segment *seg.PathSegment,
 	if err != nil {
 		return err
 	}
+	t0 := time.Now()
 	svcToQuery := &snet.SVCAddr{
 		IA:      peer.IA,
 		Path:    peerPath.Path(),
 		NextHop: peerPath.UnderlayNextHop(),
 		SVC:     addr.SvcCS,
 	}
-	return segverifier.VerifySegment(ctx, h.Verifier, svcToQuery, segment)
+	err = segverifier.VerifySegment(ctx, h.Verifier, svcToQuery, segment)
+	durationRequest := time.Since(t0)
+	log.FromCtx(ctx).Debug("[INSTRUMENTING] Beaconing verify segment", "duration", durationRequest.String())
+	return err
 }
 
 func (h Handler) updateMetric(span opentracing.Span, l handlerLabels, err error) {
