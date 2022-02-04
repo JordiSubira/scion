@@ -288,7 +288,7 @@ type remoteWriter struct {
 // with the path server.
 func (r *remoteWriter) start(ctx context.Context, bseg beacon.Beacon) {
 	logger := log.FromCtx(ctx)
-	t0 := time.Now()
+
 	addr, err := r.pather.GetPath(addr.SvcCS, bseg.Segment)
 	if err != nil {
 		logger.Error("Unable to choose server", "err", err)
@@ -296,8 +296,6 @@ func (r *remoteWriter) start(ctx context.Context, bseg beacon.Beacon) {
 		return
 	}
 	r.startSendSegReg(ctx, bseg, seg.Meta{Type: r.writer.Type, Segment: bseg.Segment}, addr)
-	durationRequest := time.Since(t0)
-	log.FromCtx(ctx).Debug("[INSTRUMENTING] Register path segment", "duration", durationRequest.String())
 }
 
 // startSendSegReg adds to the wait group and starts a goroutine that sends the
@@ -310,6 +308,7 @@ func (r *remoteWriter) startSendSegReg(ctx context.Context, bseg beacon.Beacon,
 		defer log.HandlePanic()
 		defer r.wg.Done()
 
+		t0 := time.Now()
 		labels := writerLabels{
 			StartIA: bseg.Segment.FirstIA(),
 			Ingress: bseg.InIfId,
@@ -326,6 +325,8 @@ func (r *remoteWriter) startSendSegReg(ctx context.Context, bseg beacon.Beacon,
 		}
 		r.summary.AddSrc(bseg.Segment.FirstIA())
 		r.summary.Inc()
+		durationRequest := time.Since(t0)
+		log.FromCtx(ctx).Debug("[INSTRUMENTING] Register path segment", "duration", durationRequest.String())
 
 		metrics.CounterInc(metrics.CounterWith(r.writer.Registered,
 			labels.WithResult(prom.Success).Expand()...))
