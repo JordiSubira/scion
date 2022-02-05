@@ -144,10 +144,10 @@ func (v *Verifier) notifyTRC(ctx context.Context, id cppki.TRCID) error {
 func (v *Verifier) getChains(ctx context.Context, q ChainQuery) ([][]*x509.Certificate, error) {
 	key := fmt.Sprintf("chain-%s-%x", q.IA, q.SubjectKeyID)
 
-	cachedChains, ok := v.cacheGet(key, "chains")
-	if ok {
-		return cachedChains.([][]*x509.Certificate), nil
-	}
+	_, _ = v.cacheGet(key, "chains")
+	// if ok {
+	// 	return cachedChains.([][]*x509.Certificate), nil
+	// }
 
 	chains, err := v.Engine.GetChains(ctx, q, Server(v.BoundServer))
 	if err != nil {
