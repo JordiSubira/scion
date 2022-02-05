@@ -288,27 +288,25 @@ type remoteWriter struct {
 // with the path server.
 func (r *remoteWriter) start(ctx context.Context, bseg beacon.Beacon) {
 	logger := log.FromCtx(ctx)
-
+	t0 := time.Now()
 	addr, err := r.pather.GetPath(addr.SvcCS, bseg.Segment)
 	if err != nil {
 		logger.Error("Unable to choose server", "err", err)
 		metrics.CounterInc(r.writer.InternalErrors)
 		return
 	}
-	r.startSendSegReg(ctx, bseg, seg.Meta{Type: r.writer.Type, Segment: bseg.Segment}, addr)
+	r.startSendSegReg(ctx, bseg, seg.Meta{Type: r.writer.Type, Segment: bseg.Segment}, addr, t0)
 }
 
 // startSendSegReg adds to the wait group and starts a goroutine that sends the
 // registration message to the peer.
 func (r *remoteWriter) startSendSegReg(ctx context.Context, bseg beacon.Beacon,
-	reg seg.Meta, addr net.Addr) {
+	reg seg.Meta, addr net.Addr, t0 time.Time) {
 
 	r.wg.Add(1)
 	go func() {
 		defer log.HandlePanic()
 		defer r.wg.Done()
-
-		t0 := time.Now()
 		labels := writerLabels{
 			StartIA: bseg.Segment.FirstIA(),
 			Ingress: bseg.InIfId,
