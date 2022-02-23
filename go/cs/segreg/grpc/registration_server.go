@@ -102,7 +102,7 @@ func (s *RegistrationServer) SegmentsRegistration(ctx context.Context,
 		},
 	)
 	durationRequest := time.Since(t0)
-	log.FromCtx(ctx).Debug("[INSTRUMENTING] Lookup trust material in seg registration", "duration", durationRequest.String())
+	log.FromCtx(ctx).Debug("[INSTRUMENTING] handle seg registration", "duration", durationRequest.String())
 	if err := res.Err(); err != nil {
 		s.failMetric(span, labels.WithResult(prom.ErrProcess), err)
 		// TODO(roosd): Classify crypto/db error and return appropriate status code.

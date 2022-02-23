@@ -118,10 +118,10 @@ func (p FetchingProvider) GetChains(ctx context.Context, query ChainQuery,
 	}
 
 	chains = filterVerifiableChains(chains, trcs)
-	/*if len(chains) > 0 {
+	if len(chains) > 0 {
 		setProviderMetric(span, l.WithResult(metrics.Success), nil)
 		return chains, nil
-	}*/
+	}
 
 	// No chain is available locally. Start fetching chains over the nework, if
 	// recursion is allowed.
