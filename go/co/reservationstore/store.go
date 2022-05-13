@@ -36,6 +36,7 @@ import (
 	"github.com/scionproto/scion/go/lib/log"
 	"github.com/scionproto/scion/go/lib/scrypto"
 	"github.com/scionproto/scion/go/lib/serrors"
+	slayerspath "github.com/scionproto/scion/go/lib/slayers/path"
 	"github.com/scionproto/scion/go/lib/snet"
 	"github.com/scionproto/scion/go/lib/topology"
 	"github.com/scionproto/scion/go/lib/util"
@@ -216,7 +217,8 @@ func (s *Store) ListStitchableSegments(ctx context.Context, dst addr.IA) (
 
 // InitSegmentReservation will start a new segment reservation request. The source of
 // the request will have this very AS as source.
-func (s *Store) InitSegmentReservation(ctx context.Context, req *segment.SetupReq) error {
+func (s *Store) InitSegmentReservation(ctx context.Context, req *segment.SetupReq,
+	rawPath slayerspath.Path) error {
 	if req.IsLastAS() {
 		return s.errNew("cannot initiate a reservation with this AS only in the path")
 	}
@@ -265,9 +267,9 @@ func (s *Store) InitSegmentReservation(ctx context.Context, req *segment.SetupRe
 		var res base.Response
 		var err error
 		if newSetup {
-			res, err = s.InitTearDownSegmentReservation(ctx, req)
+			res, err = s.InitTearDownSegmentReservation(ctx, req, rawPath)
 		} else {
-			res, err = s.InitCleanupSegmentReservation(ctx, req)
+			res, err = s.InitCleanupSegmentReservation(ctx, req, rawPath)
 		}
 		if err != nil {
 			log.Info("while cleaning reservations down the path an error occurred",
@@ -331,45 +333,48 @@ func (s *Store) InitSegmentReservation(ctx context.Context, req *segment.SetupRe
 	return nil
 }
 
-func (s *Store) InitConfirmSegmentReservation(ctx context.Context, req *base.Request) (
+func (s *Store) InitConfirmSegmentReservation(ctx context.Context, req *base.Request, rawPath slayerspath.Path) (
 	base.Response, error) {
 
 	// authenticate request
 	if err := s.authenticator.ComputeRequestInitialMAC(ctx, req); err != nil {
 		return nil, serrors.WrapStr("initializing confirm segment reservation", err)
 	}
-	return s.ConfirmSegmentReservation(ctx, req)
+	return s.ConfirmSegmentReservation(ctx, req, rawPath)
 
 }
 
-func (s *Store) InitActivateSegmentReservation(ctx context.Context, req *base.Request) (
+func (s *Store) InitActivateSegmentReservation(ctx context.Context, req *base.Request,
+	rawPath slayerspath.Path) (
 	base.Response, error) {
 
 	// authenticate request
 	if err := s.authenticator.ComputeRequestInitialMAC(ctx, req); err != nil {
 		return nil, serrors.WrapStr("initializing activate segment reservation", err)
 	}
-	return s.ActivateSegmentReservation(ctx, req)
+	return s.ActivateSegmentReservation(ctx, req, rawPath)
 }
 
-func (s *Store) InitCleanupSegmentReservation(ctx context.Context, req *base.Request) (
+func (s *Store) InitCleanupSegmentReservation(ctx context.Context, req *base.Request,
+	rawPath slayerspath.Path) (
 	base.Response, error) {
 
 	// authenticate request
 	if err := s.authenticator.ComputeRequestInitialMAC(ctx, req); err != nil {
 		return nil, serrors.WrapStr("initializing clean segment reservation", err)
 	}
-	return s.CleanupSegmentReservation(ctx, req)
+	return s.CleanupSegmentReservation(ctx, req, rawPath)
 }
 
-func (s *Store) InitTearDownSegmentReservation(ctx context.Context, req *base.Request) (
+func (s *Store) InitTearDownSegmentReservation(ctx context.Context, req *base.Request,
+	rawPath slayerspath.Path) (
 	base.Response, error) {
 
 	// authenticate request
 	if err := s.authenticator.ComputeRequestInitialMAC(ctx, req); err != nil {
 		return nil, serrors.WrapStr("initializing teardown segment reservation", err)
 	}
-	return s.TearDownSegmentReservation(ctx, req)
+	return s.TearDownSegmentReservation(ctx, req, rawPath)
 }
 
 func (s *Store) ListReservations(ctx context.Context, dstIA addr.IA,
@@ -445,7 +450,7 @@ func newFailedMessage(req *base.Request) *base.ResponseFailure {
 }
 
 // ConfirmSegmentReservation changes the state of an index from temporary to confirmed.
-func (s *Store) ConfirmSegmentReservation(ctx context.Context, req *base.Request) (
+func (s *Store) ConfirmSegmentReservation(ctx context.Context, req *base.Request, rawPath slayerspath.Path) (
 	base.Response, error) {
 
 	failedResponse := newFailedMessage(req)
@@ -505,7 +510,7 @@ func (s *Store) ConfirmSegmentReservation(ctx context.Context, req *base.Request
 		}
 
 		// forward to next colibri service
-		client, err := s.operator.ColibriClient(ctx, req.Path)
+		client, err := s.operator.ColibriClient(ctx, base.EgressFromDataPlanePath(rawPath), rawPath)
 		if err != nil {
 			return failedResponse, s.errWrapStr("while finding a colibri service client", err)
 		}
@@ -528,7 +533,7 @@ func (s *Store) ConfirmSegmentReservation(ctx context.Context, req *base.Request
 			}
 		} else {
 			// create authenticators before passing the response to the previous node in the path
-			if err := s.authenticator.ComputeResponseMAC(ctx, res, req.Path.SrcIA(),
+			if err := s.authenticator.ComputeResponseMAC(ctx, res, rsv.PathAtSource.SrcIA(),
 				req.Path.CurrentStep); err != nil {
 				return failedResponse, s.errWrapStr("computing authenticators for response", err)
 			}
@@ -543,7 +548,7 @@ func (s *Store) ConfirmSegmentReservation(ctx context.Context, req *base.Request
 }
 
 // ActivateSegmentReservation activates a segment reservation index.
-func (s *Store) ActivateSegmentReservation(ctx context.Context, req *base.Request) (
+func (s *Store) ActivateSegmentReservation(ctx context.Context, req *base.Request, rawPath slayerspath.Path) (
 	base.Response, error) {
 
 	failedResponse := newFailedMessage(req)
@@ -616,7 +621,7 @@ func (s *Store) ActivateSegmentReservation(ctx context.Context, req *base.Reques
 		return nil, serrors.WrapStr("computing in transit seg. authenticator", err)
 	}
 	// forward to next colibri service
-	client, err := s.operator.ColibriClient(ctx, req.Path)
+	client, err := s.operator.ColibriClient(ctx, base.EgressFromDataPlanePath(rawPath), rawPath)
 	if err != nil {
 		return failedResponse, s.errWrapStr("while finding a colibri service client", err)
 	}
@@ -648,7 +653,8 @@ func (s *Store) ActivateSegmentReservation(ctx context.Context, req *base.Reques
 }
 
 // CleanupSegmentReservation deletes an index from a segment reservation.
-func (s *Store) CleanupSegmentReservation(ctx context.Context, req *base.Request) (
+func (s *Store) CleanupSegmentReservation(ctx context.Context, req *base.Request,
+	rawPath slayerspath.Path) (
 	base.Response, error) {
 
 	failedResponse := newFailedMessage(req)
@@ -714,7 +720,7 @@ func (s *Store) CleanupSegmentReservation(ctx context.Context, req *base.Request
 		return nil, serrors.WrapStr("computing in transit seg. authenticator", err)
 	}
 	// forward to next colibri service
-	client, err := s.operator.ColibriClient(ctx, req.Path)
+	client, err := s.operator.ColibriClient(ctx, base.EgressFromDataPlanePath(rawPath), rawPath)
 	if err != nil {
 		return failedResponse, s.errWrapStr("while finding a colibri service client", err)
 	}
@@ -746,7 +752,8 @@ func (s *Store) CleanupSegmentReservation(ctx context.Context, req *base.Request
 }
 
 // TearDownSegmentReservation removes a whole segment reservation.
-func (s *Store) TearDownSegmentReservation(ctx context.Context, req *base.Request) (
+func (s *Store) TearDownSegmentReservation(ctx context.Context, req *base.Request,
+	rawPath slayerspath.Path) (
 	base.Response, error) {
 
 	failedResponse := newFailedMessage(req)
@@ -798,7 +805,7 @@ func (s *Store) TearDownSegmentReservation(ctx context.Context, req *base.Reques
 		return nil, serrors.WrapStr("computing in transit seg. authenticator", err)
 	}
 	// forward to next colibri service
-	client, err := s.operator.ColibriClient(ctx, req.Path)
+	client, err := s.operator.ColibriClient(ctx, base.EgressFromDataPlanePath(rawPath), rawPath)
 	if err != nil {
 		return failedResponse, s.errWrapStr("while finding a colibri service client", err)
 	}
@@ -1017,7 +1024,7 @@ func (s *Store) AdmitE2EReservation(ctx context.Context, req *e2e.SetupReq) (
 			return nil, serrors.WrapStr("computing in transit e2e setup request authenticator", err)
 		}
 		// authenticate request for the destination AS
-		client, err := s.operator.ColibriClient(ctx, req.Path)
+		client, err := s.operator.ColibriClient(ctx, req.Path.GetCurrentStep().Egress, req.Path.RawPath)
 		if err != nil {
 			return nil, serrors.WrapStr("while finding a colibri service client", err)
 		}
@@ -1159,7 +1166,7 @@ func (s *Store) CleanupE2EReservation(ctx context.Context, req *e2e.Request) (
 		return nil, serrors.WrapStr("computing in transit e2e base request authenticator", err)
 	}
 	// forward to next colibri service
-	client, err := s.operator.ColibriClient(ctx, req.Path)
+	client, err := s.operator.ColibriClient(ctx, req.Path.GetCurrentStep().Egress, req.Path.RawPath)
 	if err != nil {
 		return failedResponse, s.errWrapStr("while finding a colibri service client", err)
 	}
@@ -1414,7 +1421,7 @@ func (s *Store) getTokenFromDownstreamAdmission(ctx context.Context, req *segmen
 		return nil, serrors.WrapStr("computing in transit seg. setup authenticator", err)
 	}
 
-	client, err := s.operator.ColibriClient(ctx, req.Path)
+	client, err := s.operator.ColibriClient(ctx, req.Path.GetCurrentStep().Egress, req.Path.RawPath)
 	if err != nil {
 		log.Debug("error finding a colibri service client", "err", err)
 		return nil, serrors.WrapStr("while finding a colibri service client", err)
@@ -1461,7 +1468,7 @@ func (s *Store) sendUpstreamForAdmission(ctx context.Context, req *segment.Setup
 		return s.admitSegmentReservation(ctx, req)
 	}
 	// forward to next colibri service upstream
-	client, err := s.operator.ColibriClient(ctx, req.Path)
+	client, err := s.operator.ColibriClient(ctx, req.Path.GetCurrentStep().Egress, req.Path.RawPath)
 	if err != nil {
 		return failedResponse, s.errWrapStr("while finding a colibri service client", err)
 	}

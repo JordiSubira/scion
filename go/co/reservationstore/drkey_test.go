@@ -206,7 +206,7 @@ func TestE2ERequestTransitMac(t *testing.T) {
 				localIA:   dstIA,
 				slowKeyer: fakeSlowKeyer{localIA: dstIA},
 			}
-			ok, err := auth.validateE2ERequestAtDestination(ctx, &tc.transitReq)
+			ok, err := auth.validateE2ERequestAtDestination(ctx, &tc.transitReq, tc.transitReq.Path.Steps)
 			require.NoError(t, err)
 			require.True(t, ok)
 		})
@@ -265,7 +265,7 @@ func TestE2ESetupRequestTransitMac(t *testing.T) {
 				localIA:   dstIA,
 				slowKeyer: fakeSlowKeyer{localIA: dstIA},
 			}
-			ok, err := auth.validateE2ESetupRequestAtDestination(ctx, &tc.transitReq)
+			ok, err := auth.validateE2ESetupRequestAtDestination(ctx, &tc.transitReq, tc.transitReq.Path.Steps)
 			require.NoError(t, err)
 			require.True(t, ok)
 		})

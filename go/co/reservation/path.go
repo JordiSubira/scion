@@ -371,3 +371,30 @@ func StepsToString(steps []PathStep) string {
 	}
 	return strings.Join(strs, " > ")
 }
+
+type PathSteps []PathStep
+
+func (p PathSteps) SrcIA() addr.IA {
+	if p == nil {
+		return 0
+	}
+	return p[0].IA
+}
+
+func (p PathSteps) DstIA() addr.IA {
+	if p == nil || len(p) == 0 {
+		return 0
+	}
+	return p[len(p)-1].IA
+}
+
+func (p PathSteps) Step(i int) (PathStep, error) {
+	if p == nil || i >= len(p) {
+		return PathStep{}, serrors.New("wrong index", "idx", i, "len", len(p))
+	}
+	return p[i], nil
+}
+
+func (p PathSteps) Len() int {
+	return len(p)
+}

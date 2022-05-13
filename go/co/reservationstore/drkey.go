@@ -247,7 +247,7 @@ func (a *DRKeyAuthenticator) ValidateRequest(ctx context.Context,
 	ok, err := a.validateSegmentPayloadInitialMAC(ctx, req.ID, path.SrcIA(),
 		req.Authenticators[path.CurrentStep-1], req.Timestamp, inputInitialBaseRequest(req))
 	if err == nil && ok && req.IsLastAS() {
-		ok, err = a.validateRequestAtDestination(ctx, req)
+		ok, err = a.validateRequestAtDestination(ctx, req, path.Steps)
 	}
 	return ok, err
 }
@@ -262,7 +262,7 @@ func (a *DRKeyAuthenticator) ValidateSegSetupRequest(ctx context.Context,
 		req.Authenticators[req.Path.CurrentStep-1], req.Timestamp,
 		inputInitialSegSetupRequest(req))
 	if err == nil && ok && req.IsLastAS() {
-		ok, err = a.validateSegmentSetupRequestAtDestination(ctx, req)
+		ok, err = a.validateSegmentSetupRequestAtDestination(ctx, req, req.Path.Steps)
 	}
 	return ok, err
 }
@@ -278,7 +278,7 @@ func (a *DRKeyAuthenticator) ValidateE2ERequest(ctx context.Context, req *e2e.Re
 
 	ok, err := a.validateE2EPayloadInitialMAC(ctx, req, payload)
 	if err == nil && ok && req.IsLastAS() {
-		ok, err = a.validateE2ERequestAtDestination(ctx, req)
+		ok, err = a.validateE2ERequestAtDestination(ctx, req, req.Path.Steps)
 	}
 
 	return ok, err
@@ -295,7 +295,7 @@ func (a *DRKeyAuthenticator) ValidateE2ESetupRequest(ctx context.Context,
 
 	ok, err := a.validateE2EPayloadInitialMAC(ctx, &req.Request, payload)
 	if err == nil && ok && req.IsLastAS() {
-		ok, err = a.validateE2ESetupRequestAtDestination(ctx, req)
+		ok, err = a.validateE2ESetupRequestAtDestination(ctx, req, req.Path.Steps)
 	}
 	return ok, err
 
@@ -345,34 +345,35 @@ func (a *DRKeyAuthenticator) ValidateSegmentSetupResponse(ctx context.Context,
 		})
 }
 
-func (a *DRKeyAuthenticator) validateRequestAtDestination(ctx context.Context, req *base.Request) (
+func (a *DRKeyAuthenticator) validateRequestAtDestination(ctx context.Context,
+	req *base.Request, steps []base.PathStep) (
 	bool, error) {
 
-	return a.validateAtDestination(ctx, req, func(i int) []byte {
+	return a.validateAtDestination(ctx, req, steps, func(i int) []byte {
 		return inputTransitSegRequest(req)
 	})
 }
 
 func (a *DRKeyAuthenticator) validateSegmentSetupRequestAtDestination(ctx context.Context,
-	req *segment.SetupReq) (bool, error) {
+	req *segment.SetupReq, steps []base.PathStep) (bool, error) {
 
-	return a.validateAtDestination(ctx, &req.Request, func(step int) []byte {
+	return a.validateAtDestination(ctx, &req.Request, steps, func(step int) []byte {
 		return inputTransitSegSetupRequestForStep(req, step)
 	})
 }
 
 func (a *DRKeyAuthenticator) validateE2ERequestAtDestination(ctx context.Context,
-	req *e2e.Request) (bool, error) {
+	req *e2e.Request, steps []base.PathStep) (bool, error) {
 
-	return a.validateAtDestination(ctx, &req.Request, func(step int) []byte {
+	return a.validateAtDestination(ctx, &req.Request, steps, func(step int) []byte {
 		return inputTransitE2ERequest(req)
 	})
 }
 
 func (a *DRKeyAuthenticator) validateE2ESetupRequestAtDestination(ctx context.Context,
-	req *e2e.SetupReq) (bool, error) {
+	req *e2e.SetupReq, steps []base.PathStep) (bool, error) {
 
-	return a.validateAtDestination(ctx, &req.Request.Request, func(step int) []byte {
+	return a.validateAtDestination(ctx, &req.Request.Request, steps, func(step int) []byte {
 		return inputTransitE2ESetupRequestForStep(req, step)
 	})
 }
@@ -433,13 +434,14 @@ func (a *DRKeyAuthenticator) validateE2EPayloadInitialMAC(ctx context.Context,
 // but since there is no need to authenticate it to itself, it's left empty.
 // payloadFcn takes the index of the path step we want to compute the payload for.
 func (a *DRKeyAuthenticator) validateAtDestination(ctx context.Context, req *base.Request,
+	steps []base.PathStep,
 	payloadFcn func(int) []byte) (bool, error) {
 
-	if len(req.Authenticators) != len(req.Path.Steps)-1 {
+	if len(req.Authenticators) != len(steps)-1 {
 		return false, serrors.New("insconsistent length in request",
-			"auth_count", len(req.Authenticators), "step_count", len(req.Path.Steps))
+			"auth_count", len(req.Authenticators), "step_count", len(steps))
 	}
-	keys, err := a.slowAS2ASFromPath(ctx, req.Path.Steps[:len(req.Path.Steps)-1], req.Timestamp)
+	keys, err := a.slowAS2ASFromPath(ctx, steps[:len(steps)-1], req.Timestamp)
 	if err != nil {
 		return false, serrors.WrapStr("source authentication failed", err, "id", req.ID)
 	}

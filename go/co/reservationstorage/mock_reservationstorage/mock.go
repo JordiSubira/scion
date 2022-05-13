@@ -16,6 +16,7 @@ import (
 	addr "github.com/scionproto/scion/go/lib/addr"
 	colibri "github.com/scionproto/scion/go/lib/colibri"
 	reservation0 "github.com/scionproto/scion/go/lib/colibri/reservation"
+	path "github.com/scionproto/scion/go/lib/slayers/path"
 )
 
 // MockStore is a mock of Store interface.
@@ -42,18 +43,18 @@ func (m *MockStore) EXPECT() *MockStoreMockRecorder {
 }
 
 // ActivateSegmentReservation mocks base method.
-func (m *MockStore) ActivateSegmentReservation(arg0 context.Context, arg1 *reservation.Request) (reservation.Response, error) {
+func (m *MockStore) ActivateSegmentReservation(arg0 context.Context, arg1 *reservation.Request, arg2 path.Path) (reservation.Response, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ActivateSegmentReservation", arg0, arg1)
+	ret := m.ctrl.Call(m, "ActivateSegmentReservation", arg0, arg1, arg2)
 	ret0, _ := ret[0].(reservation.Response)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // ActivateSegmentReservation indicates an expected call of ActivateSegmentReservation.
-func (mr *MockStoreMockRecorder) ActivateSegmentReservation(arg0, arg1 interface{}) *gomock.Call {
+func (mr *MockStoreMockRecorder) ActivateSegmentReservation(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ActivateSegmentReservation", reflect.TypeOf((*MockStore)(nil).ActivateSegmentReservation), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ActivateSegmentReservation", reflect.TypeOf((*MockStore)(nil).ActivateSegmentReservation), arg0, arg1, arg2)
 }
 
 // AddAdmissionEntry mocks base method.
@@ -117,33 +118,33 @@ func (mr *MockStoreMockRecorder) CleanupE2EReservation(arg0, arg1 interface{}) *
 }
 
 // CleanupSegmentReservation mocks base method.
-func (m *MockStore) CleanupSegmentReservation(arg0 context.Context, arg1 *reservation.Request) (reservation.Response, error) {
+func (m *MockStore) CleanupSegmentReservation(arg0 context.Context, arg1 *reservation.Request, arg2 path.Path) (reservation.Response, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CleanupSegmentReservation", arg0, arg1)
+	ret := m.ctrl.Call(m, "CleanupSegmentReservation", arg0, arg1, arg2)
 	ret0, _ := ret[0].(reservation.Response)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // CleanupSegmentReservation indicates an expected call of CleanupSegmentReservation.
-func (mr *MockStoreMockRecorder) CleanupSegmentReservation(arg0, arg1 interface{}) *gomock.Call {
+func (mr *MockStoreMockRecorder) CleanupSegmentReservation(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CleanupSegmentReservation", reflect.TypeOf((*MockStore)(nil).CleanupSegmentReservation), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CleanupSegmentReservation", reflect.TypeOf((*MockStore)(nil).CleanupSegmentReservation), arg0, arg1, arg2)
 }
 
 // ConfirmSegmentReservation mocks base method.
-func (m *MockStore) ConfirmSegmentReservation(arg0 context.Context, arg1 *reservation.Request) (reservation.Response, error) {
+func (m *MockStore) ConfirmSegmentReservation(arg0 context.Context, arg1 *reservation.Request, arg2 path.Path) (reservation.Response, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ConfirmSegmentReservation", arg0, arg1)
+	ret := m.ctrl.Call(m, "ConfirmSegmentReservation", arg0, arg1, arg2)
 	ret0, _ := ret[0].(reservation.Response)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // ConfirmSegmentReservation indicates an expected call of ConfirmSegmentReservation.
-func (mr *MockStoreMockRecorder) ConfirmSegmentReservation(arg0, arg1 interface{}) *gomock.Call {
+func (mr *MockStoreMockRecorder) ConfirmSegmentReservation(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ConfirmSegmentReservation", reflect.TypeOf((*MockStore)(nil).ConfirmSegmentReservation), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ConfirmSegmentReservation", reflect.TypeOf((*MockStore)(nil).ConfirmSegmentReservation), arg0, arg1, arg2)
 }
 
 // DeleteExpiredAdmissionEntries mocks base method.
@@ -194,77 +195,77 @@ func (mr *MockStoreMockRecorder) GetReservationsAtSource(arg0, arg1 interface{})
 }
 
 // InitActivateSegmentReservation mocks base method.
-func (m *MockStore) InitActivateSegmentReservation(arg0 context.Context, arg1 *reservation.Request) (reservation.Response, error) {
+func (m *MockStore) InitActivateSegmentReservation(arg0 context.Context, arg1 *reservation.Request, arg2 path.Path) (reservation.Response, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "InitActivateSegmentReservation", arg0, arg1)
+	ret := m.ctrl.Call(m, "InitActivateSegmentReservation", arg0, arg1, arg2)
 	ret0, _ := ret[0].(reservation.Response)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // InitActivateSegmentReservation indicates an expected call of InitActivateSegmentReservation.
-func (mr *MockStoreMockRecorder) InitActivateSegmentReservation(arg0, arg1 interface{}) *gomock.Call {
+func (mr *MockStoreMockRecorder) InitActivateSegmentReservation(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "InitActivateSegmentReservation", reflect.TypeOf((*MockStore)(nil).InitActivateSegmentReservation), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "InitActivateSegmentReservation", reflect.TypeOf((*MockStore)(nil).InitActivateSegmentReservation), arg0, arg1, arg2)
 }
 
 // InitCleanupSegmentReservation mocks base method.
-func (m *MockStore) InitCleanupSegmentReservation(arg0 context.Context, arg1 *reservation.Request) (reservation.Response, error) {
+func (m *MockStore) InitCleanupSegmentReservation(arg0 context.Context, arg1 *reservation.Request, arg2 path.Path) (reservation.Response, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "InitCleanupSegmentReservation", arg0, arg1)
+	ret := m.ctrl.Call(m, "InitCleanupSegmentReservation", arg0, arg1, arg2)
 	ret0, _ := ret[0].(reservation.Response)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // InitCleanupSegmentReservation indicates an expected call of InitCleanupSegmentReservation.
-func (mr *MockStoreMockRecorder) InitCleanupSegmentReservation(arg0, arg1 interface{}) *gomock.Call {
+func (mr *MockStoreMockRecorder) InitCleanupSegmentReservation(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "InitCleanupSegmentReservation", reflect.TypeOf((*MockStore)(nil).InitCleanupSegmentReservation), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "InitCleanupSegmentReservation", reflect.TypeOf((*MockStore)(nil).InitCleanupSegmentReservation), arg0, arg1, arg2)
 }
 
 // InitConfirmSegmentReservation mocks base method.
-func (m *MockStore) InitConfirmSegmentReservation(arg0 context.Context, arg1 *reservation.Request) (reservation.Response, error) {
+func (m *MockStore) InitConfirmSegmentReservation(arg0 context.Context, arg1 *reservation.Request, arg2 path.Path) (reservation.Response, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "InitConfirmSegmentReservation", arg0, arg1)
+	ret := m.ctrl.Call(m, "InitConfirmSegmentReservation", arg0, arg1, arg2)
 	ret0, _ := ret[0].(reservation.Response)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // InitConfirmSegmentReservation indicates an expected call of InitConfirmSegmentReservation.
-func (mr *MockStoreMockRecorder) InitConfirmSegmentReservation(arg0, arg1 interface{}) *gomock.Call {
+func (mr *MockStoreMockRecorder) InitConfirmSegmentReservation(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "InitConfirmSegmentReservation", reflect.TypeOf((*MockStore)(nil).InitConfirmSegmentReservation), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "InitConfirmSegmentReservation", reflect.TypeOf((*MockStore)(nil).InitConfirmSegmentReservation), arg0, arg1, arg2)
 }
 
 // InitSegmentReservation mocks base method.
-func (m *MockStore) InitSegmentReservation(arg0 context.Context, arg1 *segment.SetupReq) error {
+func (m *MockStore) InitSegmentReservation(arg0 context.Context, arg1 *segment.SetupReq, arg2 path.Path) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "InitSegmentReservation", arg0, arg1)
+	ret := m.ctrl.Call(m, "InitSegmentReservation", arg0, arg1, arg2)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // InitSegmentReservation indicates an expected call of InitSegmentReservation.
-func (mr *MockStoreMockRecorder) InitSegmentReservation(arg0, arg1 interface{}) *gomock.Call {
+func (mr *MockStoreMockRecorder) InitSegmentReservation(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "InitSegmentReservation", reflect.TypeOf((*MockStore)(nil).InitSegmentReservation), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "InitSegmentReservation", reflect.TypeOf((*MockStore)(nil).InitSegmentReservation), arg0, arg1, arg2)
 }
 
 // InitTearDownSegmentReservation mocks base method.
-func (m *MockStore) InitTearDownSegmentReservation(arg0 context.Context, arg1 *reservation.Request) (reservation.Response, error) {
+func (m *MockStore) InitTearDownSegmentReservation(arg0 context.Context, arg1 *reservation.Request, arg2 path.Path) (reservation.Response, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "InitTearDownSegmentReservation", arg0, arg1)
+	ret := m.ctrl.Call(m, "InitTearDownSegmentReservation", arg0, arg1, arg2)
 	ret0, _ := ret[0].(reservation.Response)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // InitTearDownSegmentReservation indicates an expected call of InitTearDownSegmentReservation.
-func (mr *MockStoreMockRecorder) InitTearDownSegmentReservation(arg0, arg1 interface{}) *gomock.Call {
+func (mr *MockStoreMockRecorder) InitTearDownSegmentReservation(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "InitTearDownSegmentReservation", reflect.TypeOf((*MockStore)(nil).InitTearDownSegmentReservation), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "InitTearDownSegmentReservation", reflect.TypeOf((*MockStore)(nil).InitTearDownSegmentReservation), arg0, arg1, arg2)
 }
 
 // ListReservations mocks base method.
@@ -328,16 +329,16 @@ func (mr *MockStoreMockRecorder) ReportSegmentReservationsInDB(arg0 interface{})
 }
 
 // TearDownSegmentReservation mocks base method.
-func (m *MockStore) TearDownSegmentReservation(arg0 context.Context, arg1 *reservation.Request) (reservation.Response, error) {
+func (m *MockStore) TearDownSegmentReservation(arg0 context.Context, arg1 *reservation.Request, arg2 path.Path) (reservation.Response, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "TearDownSegmentReservation", arg0, arg1)
+	ret := m.ctrl.Call(m, "TearDownSegmentReservation", arg0, arg1, arg2)
 	ret0, _ := ret[0].(reservation.Response)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // TearDownSegmentReservation indicates an expected call of TearDownSegmentReservation.
-func (mr *MockStoreMockRecorder) TearDownSegmentReservation(arg0, arg1 interface{}) *gomock.Call {
+func (mr *MockStoreMockRecorder) TearDownSegmentReservation(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TearDownSegmentReservation", reflect.TypeOf((*MockStore)(nil).TearDownSegmentReservation), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TearDownSegmentReservation", reflect.TypeOf((*MockStore)(nil).TearDownSegmentReservation), arg0, arg1, arg2)
 }
