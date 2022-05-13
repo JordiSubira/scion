@@ -30,6 +30,7 @@ import (
 	"github.com/scionproto/scion/go/lib/log"
 	"github.com/scionproto/scion/go/lib/periodic"
 	"github.com/scionproto/scion/go/lib/serrors"
+	slayerspath "github.com/scionproto/scion/go/lib/slayers/path"
 	"github.com/scionproto/scion/go/lib/snet"
 )
 
@@ -43,8 +44,8 @@ type Manager interface {
 	GetReservationsAtSource(ctx context.Context, dst addr.IA) ([]*segment.Reservation, error)
 	SetupRequest(ctx context.Context, req *segment.SetupReq) error
 	SetupManyRequest(ctx context.Context, reqs []*segment.SetupReq) []error
-	ActivateRequest(ctx context.Context, req *base.Request) error
-	ActivateManyRequest(ctx context.Context, reqs []*base.Request) []error
+	ActivateRequest(ctx context.Context, req *base.Request, path slayerspath.Path) error
+	ActivateManyRequest(ctx context.Context, reqs []*base.Request, paths []slayerspath.Path) []error
 }
 
 // manager takes care of the health of the segment reservations.
@@ -249,7 +250,7 @@ func (m *manager) SetupRequest(ctx context.Context, req *segment.SetupReq) error
 	}
 	// confirm new index
 	confirmReq := base.NewRequest(m.now(), &req.Reservation.ID, req.Index, req.Path)
-	res, err := m.store.InitConfirmSegmentReservation(ctx, confirmReq, confirmReq.Path.RawPath)
+	res, err := m.store.InitConfirmSegmentReservation(ctx, confirmReq, req.Path.RawPath)
 	if err != nil || !res.Success() {
 		log.Info("failed to confirm the index", "id", req.ID, "idx", req.Index,
 			"err", err, "res", res)
@@ -273,8 +274,8 @@ func (m *manager) SetupManyRequest(ctx context.Context, reqs []*segment.SetupReq
 	return errs
 }
 
-func (m *manager) ActivateRequest(ctx context.Context, req *base.Request) error {
-	res, err := m.store.InitActivateSegmentReservation(ctx, req, req.Path.RawPath)
+func (m *manager) ActivateRequest(ctx context.Context, req *base.Request, path slayerspath.Path) error {
+	res, err := m.store.InitActivateSegmentReservation(ctx, req, path)
 	if err != nil {
 		return err
 	}
@@ -285,16 +286,16 @@ func (m *manager) ActivateRequest(ctx context.Context, req *base.Request) error 
 	return nil
 }
 
-func (m *manager) ActivateManyRequest(ctx context.Context, reqs []*base.Request) []error {
+func (m *manager) ActivateManyRequest(ctx context.Context, reqs []*base.Request, paths []slayerspath.Path) []error {
 	wg := sync.WaitGroup{}
 	wg.Add(len(reqs))
 	errs := make([]error, len(reqs))
-	for i, req := range reqs {
-		i, req := i, req
+	for i := range reqs {
+		i, req, path := i, reqs[i], paths[i]
 		go func() {
 			defer log.HandlePanic()
 			defer wg.Done()
-			errs[i] = m.ActivateRequest(ctx, req)
+			errs[i] = m.ActivateRequest(ctx, req, path)
 		}()
 	}
 	wg.Wait()

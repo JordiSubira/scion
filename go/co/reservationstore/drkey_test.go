@@ -195,7 +195,7 @@ func TestE2ERequestTransitMac(t *testing.T) {
 					localIA:   authIA,
 					fastKeyer: fakeFastKeyer{localIA: authIA},
 				}
-				err := auth.ComputeE2ERequestTransitMAC(ctx, &tc.transitReq)
+				err := auth.ComputeE2ERequestTransitMAC(ctx, &tc.transitReq, tc.transitReq.Path.DstIA(), tc.transitReq.Path.CurrentStep)
 				require.NoError(t, err)
 			}
 
@@ -254,7 +254,7 @@ func TestE2ESetupRequestTransitMac(t *testing.T) {
 					localIA:   authIA,
 					fastKeyer: fakeFastKeyer{localIA: authIA},
 				}
-				err := auth.ComputeE2ESetupRequestTransitMAC(ctx, &tc.transitReq)
+				err := auth.ComputeE2ESetupRequestTransitMAC(ctx, &tc.transitReq, tc.transitReq.Path.DstIA(), tc.transitReq.Path.CurrentStep)
 				require.NoError(t, err)
 			}
 

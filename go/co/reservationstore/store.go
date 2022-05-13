@@ -307,7 +307,7 @@ func (s *Store) InitSegmentReservation(ctx context.Context, req *segment.SetupRe
 		req.ReverseTraveling = !s.isCore
 		res, err = s.sendUpstreamForAdmission(ctx, req)
 	} else {
-		err = s.authenticator.ComputeSegmentSetupRequestInitialMAC(ctx, req)
+		err = s.authenticator.ComputeSegmentSetupRequestInitialMAC(ctx, req, req.Path.Steps)
 		if err != nil {
 			return err
 		}
@@ -337,7 +337,7 @@ func (s *Store) InitConfirmSegmentReservation(ctx context.Context, req *base.Req
 	base.Response, error) {
 
 	// authenticate request
-	if err := s.authenticator.ComputeRequestInitialMAC(ctx, req); err != nil {
+	if err := s.authenticator.ComputeRequestInitialMAC(ctx, req, req.Path.Steps); err != nil {
 		return nil, serrors.WrapStr("initializing confirm segment reservation", err)
 	}
 	return s.ConfirmSegmentReservation(ctx, req, rawPath)
@@ -349,7 +349,7 @@ func (s *Store) InitActivateSegmentReservation(ctx context.Context, req *base.Re
 	base.Response, error) {
 
 	// authenticate request
-	if err := s.authenticator.ComputeRequestInitialMAC(ctx, req); err != nil {
+	if err := s.authenticator.ComputeRequestInitialMAC(ctx, req, req.Path.Steps); err != nil {
 		return nil, serrors.WrapStr("initializing activate segment reservation", err)
 	}
 	return s.ActivateSegmentReservation(ctx, req, rawPath)
@@ -360,7 +360,7 @@ func (s *Store) InitCleanupSegmentReservation(ctx context.Context, req *base.Req
 	base.Response, error) {
 
 	// authenticate request
-	if err := s.authenticator.ComputeRequestInitialMAC(ctx, req); err != nil {
+	if err := s.authenticator.ComputeRequestInitialMAC(ctx, req, req.Path.Steps); err != nil {
 		return nil, serrors.WrapStr("initializing clean segment reservation", err)
 	}
 	return s.CleanupSegmentReservation(ctx, req, rawPath)
@@ -371,7 +371,7 @@ func (s *Store) InitTearDownSegmentReservation(ctx context.Context, req *base.Re
 	base.Response, error) {
 
 	// authenticate request
-	if err := s.authenticator.ComputeRequestInitialMAC(ctx, req); err != nil {
+	if err := s.authenticator.ComputeRequestInitialMAC(ctx, req, req.Path.Steps); err != nil {
 		return nil, serrors.WrapStr("initializing teardown segment reservation", err)
 	}
 	return s.TearDownSegmentReservation(ctx, req, rawPath)
@@ -505,7 +505,8 @@ func (s *Store) ConfirmSegmentReservation(ctx context.Context, req *base.Request
 		}
 	} else {
 		// authenticate request for the destination AS
-		if err := s.authenticator.ComputeRequestTransitMAC(ctx, req); err != nil {
+		// TODO(JordiSubira): To be changed by reservation steps
+		if err := s.authenticator.ComputeRequestTransitMAC(ctx, req, req.Path.DstIA(), req.Path.CurrentStep); err != nil {
 			return nil, serrors.WrapStr("computing in transit seg. authenticator", err)
 		}
 
@@ -617,7 +618,8 @@ func (s *Store) ActivateSegmentReservation(ctx context.Context, req *base.Reques
 	}
 
 	// authenticate request for the destination AS
-	if err := s.authenticator.ComputeRequestTransitMAC(ctx, req); err != nil {
+	// TODO(JordiSubira): To be changed by reservation steps
+	if err := s.authenticator.ComputeRequestTransitMAC(ctx, req, req.Path.DstIA(), req.Path.CurrentStep); err != nil {
 		return nil, serrors.WrapStr("computing in transit seg. authenticator", err)
 	}
 	// forward to next colibri service
@@ -716,7 +718,8 @@ func (s *Store) CleanupSegmentReservation(ctx context.Context, req *base.Request
 	}
 
 	// authenticate request for the destination AS
-	if err := s.authenticator.ComputeRequestTransitMAC(ctx, req); err != nil {
+	// TODO(JordiSubira): To be changed by reservation steps
+	if err := s.authenticator.ComputeRequestTransitMAC(ctx, req, req.Path.DstIA(), req.Path.CurrentStep); err != nil {
 		return nil, serrors.WrapStr("computing in transit seg. authenticator", err)
 	}
 	// forward to next colibri service
@@ -801,7 +804,8 @@ func (s *Store) TearDownSegmentReservation(ctx context.Context, req *base.Reques
 	}
 
 	// authenticate request for the destination AS
-	if err := s.authenticator.ComputeRequestTransitMAC(ctx, req); err != nil {
+	// TODO(JordiSubira): To be changed by reservation steps
+	if err := s.authenticator.ComputeRequestTransitMAC(ctx, req, req.Path.DstIA(), req.Path.CurrentStep); err != nil {
 		return nil, serrors.WrapStr("computing in transit seg. authenticator", err)
 	}
 	// forward to next colibri service
@@ -1020,7 +1024,8 @@ func (s *Store) AdmitE2EReservation(ctx context.Context, req *e2e.SetupReq) (
 			// indicate the next node we are using the next segment:
 			req.CurrentSegmentRsvIndex++
 		}
-		if err := s.authenticator.ComputeE2ESetupRequestTransitMAC(ctx, req); err != nil {
+		// TODO(JordiSubira): To be changed by reservation steps
+		if err := s.authenticator.ComputeE2ESetupRequestTransitMAC(ctx, req, req.Path.DstIA(), req.Path.CurrentStep); err != nil {
 			return nil, serrors.WrapStr("computing in transit e2e setup request authenticator", err)
 		}
 		// authenticate request for the destination AS
@@ -1162,7 +1167,8 @@ func (s *Store) CleanupE2EReservation(ctx context.Context, req *e2e.Request) (
 		return res, nil
 	}
 	// authenticate the semi mutable parts of the request, to be validated at the destination
-	if err := s.authenticator.ComputeE2ERequestTransitMAC(ctx, req); err != nil {
+	// TODO(JordiSubira): To be changed by reservation steps
+	if err := s.authenticator.ComputeE2ERequestTransitMAC(ctx, req, req.Path.DstIA(), req.Path.CurrentStep); err != nil {
 		return nil, serrors.WrapStr("computing in transit e2e base request authenticator", err)
 	}
 	// forward to next colibri service
@@ -1417,7 +1423,7 @@ func (s *Store) getTokenFromDownstreamAdmission(ctx context.Context, req *segmen
 	segment.SegmentSetupResponse, error) {
 
 	// authenticate request for the destination AS
-	if err := s.authenticator.ComputeSegmentSetupRequestTransitMAC(ctx, req); err != nil {
+	if err := s.authenticator.ComputeSegmentSetupRequestTransitMAC(ctx, req, req.Path.DstIA(), req.Path.CurrentStep); err != nil {
 		return nil, serrors.WrapStr("computing in transit seg. setup authenticator", err)
 	}
 
@@ -1460,7 +1466,7 @@ func (s *Store) sendUpstreamForAdmission(ctx context.Context, req *segment.Setup
 				err.Error()
 			return failedResponse, err
 		}
-		err := s.authenticator.ComputeSegmentSetupRequestInitialMAC(ctx, req)
+		err := s.authenticator.ComputeSegmentSetupRequestInitialMAC(ctx, req, req.Path.Steps)
 		if err != nil {
 			return nil, err
 		}

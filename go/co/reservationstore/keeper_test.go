@@ -33,6 +33,7 @@ import (
 	"github.com/scionproto/scion/go/lib/addr"
 	"github.com/scionproto/scion/go/lib/colibri/reservation"
 	"github.com/scionproto/scion/go/lib/pathpol"
+	slayerspath "github.com/scionproto/scion/go/lib/slayers/path"
 	"github.com/scionproto/scion/go/lib/slayers/path/scion"
 	"github.com/scionproto/scion/go/lib/snet"
 	"github.com/scionproto/scion/go/lib/util"
@@ -184,10 +185,10 @@ func TestKeepOneShot(t *testing.T) {
 				func(_ context.Context, reqs []*segment.SetupReq) []error {
 					return make([]error, len(reqs))
 				})
-			manager.EXPECT().ActivateManyRequest(gomock.Any(), gomock.Any()).
+			manager.EXPECT().ActivateManyRequest(gomock.Any(), gomock.Any(), gomock.Any()).
 				AnyTimes().DoAndReturn(
-				func(_ context.Context, reqs []*base.Request) []error {
-					return make([]error, len(reqs))
+				func(_ context.Context, reqs []*base.Request, paths []slayerspath.Path) []error {
+					return make([]error, len(reqs), len(paths))
 				})
 
 			wakeupTime, err := keeper.OneShot(ctx)
@@ -251,7 +252,7 @@ func TestSetupsPerDestination(t *testing.T) {
 				func(_ context.Context, reqs []*segment.SetupReq) []error {
 					return make([]error, len(reqs))
 				})
-			manager.EXPECT().ActivateManyRequest(gomock.Any(), gomock.Any()).AnyTimes()
+			manager.EXPECT().ActivateManyRequest(gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
 
 			_, err := keeper.setupsPerDestination(ctx, dstIA, tc.requirements, tc.paths, noRsvs)
 			require.NoError(t, err)
@@ -382,7 +383,7 @@ func TestRequestNSuccessfulRsvs(t *testing.T) {
 					}
 					return errs
 				})
-			manager.EXPECT().ActivateManyRequest(gomock.Any(), gomock.Any()).AnyTimes()
+			manager.EXPECT().ActivateManyRequest(gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
 			// build requests from paths (tested elsewhere)
 			requests, err := tc.requirements.PrepareSetupRequests(tc.paths, localIA.AS(),
 				now, now.Add(time.Hour))
