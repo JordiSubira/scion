@@ -26,8 +26,10 @@ import (
 
 type Request struct {
 	base.Request
-	SrcHost net.IP
-	DstHost net.IP
+	SrcHost     net.IP
+	DstHost     net.IP
+	CurrentStep int
+	Steps       base.PathSteps
 }
 
 func (r *Request) Len() int {

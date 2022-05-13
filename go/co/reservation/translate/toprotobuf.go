@@ -44,7 +44,8 @@ func PBufE2ERequest(req *e2e.Request) (*colpb.E2ERequest, error) {
 		Base:        base,
 		SrcHost:     req.SrcHost,
 		DstHost:     req.DstHost,
-		CurrentStep: uint32(req.Path.CurrentStep),
+		CurrentStep: uint32(req.CurrentStep),
+		Steps:       PBufSteps(req.Steps),
 	}, err
 }
 

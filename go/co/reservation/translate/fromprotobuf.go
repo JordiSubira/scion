@@ -66,9 +66,11 @@ func E2ERequest(msg *colpb.E2ERequest, rawPath slayerspath.Path) (*e2e.Request, 
 	}
 	base.Path.CurrentStep = int(msg.CurrentStep)
 	return &e2e.Request{
-		Request: *base,
-		SrcHost: msg.SrcHost,
-		DstHost: msg.DstHost,
+		Request:     *base,
+		SrcHost:     msg.SrcHost,
+		DstHost:     msg.DstHost,
+		CurrentStep: int(msg.CurrentStep),
+		Steps:       TransparentPathSteps(msg.Steps),
 	}, nil
 }
 

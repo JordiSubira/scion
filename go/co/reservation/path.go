@@ -197,7 +197,7 @@ func (p *TransparentPath) Len() int {
 	if p.RawPath != nil {
 		rawPathLen = p.RawPath.Len()
 	}
-	return 2 + 2 + len(p.Steps)*pathStepLen + 1 + rawPathLen
+	return 2 + 2 + len(p.Steps)*PathStepLen + 1 + rawPathLen
 }
 
 // Serialize will panic if buff is less bytes than Len().
@@ -251,7 +251,7 @@ func TransparentPathFromRaw(raw []byte) (*TransparentPath, error) {
 	raw = raw[2:]
 	stepCount := int(binary.BigEndian.Uint16(raw))
 	raw = raw[2:]
-	if len(raw) < stepCount*pathStepLen {
+	if len(raw) < stepCount*PathStepLen {
 		return nil, serrors.New("buffer too small for these path", "step_count", stepCount,
 			"len", len(raw))
 	}
@@ -344,7 +344,7 @@ type PathStep struct {
 	IA      addr.IA
 }
 
-const pathStepLen = 2 + 2 + 8
+const PathStepLen = 2 + 2 + 8
 
 func PathFromDataplanePath(p snet.DataplanePath) (slayerspath.Path, error) {
 	var s slayers.SCION
@@ -396,5 +396,5 @@ func (p PathSteps) Step(i int) (PathStep, error) {
 }
 
 func (p PathSteps) Len() int {
-	return len(p)
+	return len(p) * PathStepLen
 }

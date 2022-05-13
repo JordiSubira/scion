@@ -244,13 +244,13 @@ func (m *manager) GetReservationsAtSource(ctx context.Context, dst addr.IA) (
 }
 
 func (m *manager) SetupRequest(ctx context.Context, req *segment.SetupReq) error {
-	err := m.store.InitSegmentReservation(ctx, req, req.Path.RawPath)
+	err := m.store.InitSegmentReservation(ctx, req, req.PathAtSource.RawPath)
 	if err != nil {
 		return err
 	}
 	// confirm new index
 	confirmReq := base.NewRequest(m.now(), &req.Reservation.ID, req.Index, req.Path)
-	res, err := m.store.InitConfirmSegmentReservation(ctx, confirmReq, req.Path.RawPath)
+	res, err := m.store.InitConfirmSegmentReservation(ctx, confirmReq, req.PathAtSource.RawPath)
 	if err != nil || !res.Success() {
 		log.Info("failed to confirm the index", "id", req.ID, "idx", req.Index,
 			"err", err, "res", res)

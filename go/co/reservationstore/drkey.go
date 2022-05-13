@@ -439,9 +439,9 @@ func (a *DRKeyAuthenticator) validateAtDestination(ctx context.Context, req *bas
 	steps base.PathSteps,
 	payloadFcn func(int) []byte) (bool, error) {
 
-	if len(req.Authenticators) != steps.Len()-1 {
+	if len(req.Authenticators) != len(steps)-1 {
 		return false, serrors.New("insconsistent length in request",
-			"auth_count", len(req.Authenticators), "step_count", steps.Len())
+			"auth_count", len(req.Authenticators), "step_count", len(steps))
 	}
 	keys, err := a.slowAS2ASFromPath(ctx, steps[:len(steps)-1], req.Timestamp)
 	if err != nil {

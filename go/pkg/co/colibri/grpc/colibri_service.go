@@ -59,7 +59,8 @@ func (s *ColibriService) SegmentSetup(ctx context.Context, msg *colpb.SegmentSet
 		// should send a message?
 		return nil, err
 	}
-	res, err := s.Store.AdmitSegmentReservation(ctx, req)
+	currentStep := int(base.GetCurrentHopField(path))
+	res, err := s.Store.AdmitSegmentReservation(ctx, req, currentStep, path)
 	if err != nil {
 		log.Error("colibri store returned an error", "err", err)
 		// should send a message?
@@ -82,7 +83,8 @@ func (s *ColibriService) ConfirmSegmentIndex(ctx context.Context,
 		log.Error("error unmarshalling", "err", err)
 		return nil, err
 	}
-	res, err := s.Store.ConfirmSegmentReservation(ctx, req, path)
+	currentStep := int(base.GetCurrentHopField(path))
+	res, err := s.Store.ConfirmSegmentReservation(ctx, req, currentStep, path)
 	if err != nil {
 		log.Error("colibri store returned an error", "err", err)
 		return nil, err
@@ -107,7 +109,8 @@ func (s *ColibriService) ActivateSegmentIndex(ctx context.Context,
 		log.Error("error unmarshalling", "err", err)
 		return nil, err
 	}
-	res, err := s.Store.ActivateSegmentReservation(ctx, req, path)
+	currentStep := int(base.GetCurrentHopField(path))
+	res, err := s.Store.ActivateSegmentReservation(ctx, req, currentStep, path)
 	if err != nil {
 		log.Error("colibri store returned an error", "err", err)
 		return nil, err
@@ -132,7 +135,8 @@ func (s *ColibriService) TeardownSegment(ctx context.Context, msg *colpb.Teardow
 		log.Error("error unmarshalling", "err", err)
 		return nil, err
 	}
-	res, err := s.Store.TearDownSegmentReservation(ctx, req, path)
+	currentStep := int(base.GetCurrentHopField(path))
+	res, err := s.Store.TearDownSegmentReservation(ctx, req, currentStep, path)
 	if err != nil {
 		log.Error("colibri store returned an error", "err", err)
 		return nil, err
@@ -157,7 +161,8 @@ func (s *ColibriService) CleanupSegmentIndex(ctx context.Context,
 		log.Error("error unmarshalling", "err", err)
 		return nil, err
 	}
-	res, err := s.Store.CleanupSegmentReservation(ctx, req, path)
+	currentStep := int(base.GetCurrentHopField(path))
+	res, err := s.Store.CleanupSegmentReservation(ctx, req, currentStep, path)
 	if err != nil {
 		log.Error("colibri store returned an error", "err", err)
 		return nil, err

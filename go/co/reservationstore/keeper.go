@@ -290,7 +290,7 @@ func (k *keeper) requestNSuccessfulRsvs(ctx context.Context, dstIA addr.IA, entr
 			if errs[i] == nil {
 				needActivation = append(needActivation, base.NewRequest(k.manager.Now(), &req.ID,
 					req.Index, req.Path))
-				needActivationPaths = append(needActivationPaths, req.Path.RawPath)
+				needActivationPaths = append(needActivationPaths, req.PathAtSource.RawPath)
 			}
 		}
 		errs = filterEmptyErrors(errs)

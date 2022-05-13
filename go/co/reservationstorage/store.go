@@ -32,15 +32,15 @@ type Store interface {
 	// ListReservations is used to get segments to other ASes.
 	ListReservations(ctx context.Context, dstIA addr.IA, pt reservation.PathType) (
 		[]*colibri.ReservationLooks, error)
-	AdmitSegmentReservation(ctx context.Context, req *sgt.SetupReq) (
+	AdmitSegmentReservation(ctx context.Context, req *sgt.SetupReq, currentStep int, rawPath slayerspath.Path) (
 		sgt.SegmentSetupResponse, error)
-	ConfirmSegmentReservation(ctx context.Context, req *base.Request, rawPath slayerspath.Path) (
+	ConfirmSegmentReservation(ctx context.Context, req *base.Request, currentStep int, rawPath slayerspath.Path) (
 		base.Response, error)
-	ActivateSegmentReservation(ctx context.Context, req *base.Request, rawPath slayerspath.Path) (
+	ActivateSegmentReservation(ctx context.Context, req *base.Request, currentStep int, rawPath slayerspath.Path) (
 		base.Response, error)
-	CleanupSegmentReservation(ctx context.Context, req *base.Request, rawPath slayerspath.Path) (
+	CleanupSegmentReservation(ctx context.Context, req *base.Request, currentStep int, rawPath slayerspath.Path) (
 		base.Response, error)
-	TearDownSegmentReservation(ctx context.Context, req *base.Request, rawPath slayerspath.Path) (
+	TearDownSegmentReservation(ctx context.Context, req *base.Request, currentStep int, rawPath slayerspath.Path) (
 		base.Response, error)
 	AdmitE2EReservation(ctx context.Context, req *e2e.SetupReq) (
 		e2e.SetupResponse, error)
