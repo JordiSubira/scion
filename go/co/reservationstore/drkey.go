@@ -121,8 +121,6 @@ func NewDRKeyAuthenticator(localIA addr.IA, dialer libgrpc.Dialer) Authenticator
 func (a *DRKeyAuthenticator) ComputeRequestInitialMAC(ctx context.Context,
 	req *base.Request, steps base.PathSteps) error {
 
-	log.FromCtx(ctx).Debug("XXXL", "steps", base.StepsToString(steps))
-
 	payload := inputInitialBaseRequest(req)
 	return a.computeInitialMACforPayloadWithSegKeys(ctx, payload, req, steps)
 }

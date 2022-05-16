@@ -53,6 +53,7 @@ func createAuthsForBaseRequest(ctx context.Context, conn DRKeyGetter,
 	// MAC and set authenticators inside request
 	payload := make([]byte, minSizeBaseReq(req))
 	serializeBaseRequest(payload, req)
+
 	req.Authenticators, err = computeAuthenticators(payload, keys)
 	return err
 }
@@ -172,7 +173,8 @@ func getKeysWithLocalIA(ctx context.Context, conn DRKeyGetter, steps []base.Path
 func minSizeBaseReq(req *BaseRequest) int {
 	return req.Id.Len() + 1 + 4 + // ID + index + time_stamp
 		+req.Path.Len() + // path
-		16 + 16 // srcHost + dstHost
+		16 + 16 + // srcHost + dstHost
+		base.PathSteps(req.Path.Steps).Len()
 }
 
 func minSizeE2ESetupReq(req *E2EReservationSetup) int {
@@ -198,6 +200,8 @@ func serializeBaseRequest(buff []byte, req *BaseRequest) {
 	copy(buff[offset:], req.SrcHost.To16())
 	offset += 16
 	copy(buff[offset:], req.DstHost.To16())
+	offset += 16
+	base.PathSteps(req.Path.Steps).Serialize(buff[offset:], base.SerializeImmutable)
 }
 
 func serializeE2EReservationSetup(buff []byte, req *E2EReservationSetup) {

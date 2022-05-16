@@ -267,6 +267,7 @@ func (s *ColibriService) SetupReservation(ctx context.Context, msg *colpb.SetupR
 			SrcHost:     msg.SrcHost,
 			DstHost:     msg.DstHost,
 			CurrentStep: 0,
+			Steps:       msg.PathSteps,
 		},
 		RequestedBw: msg.RequestedBw,
 		Params: &colpb.E2ESetupRequest_PathParams{
@@ -362,6 +363,7 @@ func (s *ColibriService) CleanupReservation(ctx context.Context,
 			reservation.IndexNumber(msg.Base.Index), &trans),
 		SrcHost: msg.SrcHost,
 		DstHost: msg.DstHost,
+		Steps:   translate.TransparentPathSteps(msg.Base.Steps),
 	}
 	req.Authenticators = msg.Base.Authenticators.Macs
 
@@ -444,8 +446,6 @@ func extractPathFromCtx(ctx context.Context) (slayerspath.Path, error) {
 		logger.Debug("peer must be *snet.UDPAddr", "actual", fmt.Sprintf("%T", gPeer))
 		return nil, serrors.New("peer must be *snet.UDPAddr", "actual", fmt.Sprintf("%T", gPeer))
 	}
-
-	// log.FromCtx(ctx).Debug("XXXL", "peer", peer)
 
 	path, err := base.PathFromDataplanePath(peer.Path)
 	if err != nil || path == nil {

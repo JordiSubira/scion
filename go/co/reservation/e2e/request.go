@@ -33,7 +33,7 @@ type Request struct {
 }
 
 func (r *Request) Len() int {
-	return r.Request.Len() + 16 + 16
+	return r.Request.Len() + 16 + 16 + r.Steps.Len()
 }
 func (r *Request) Serialize(buff []byte, options base.SerializeOptions) {
 	offset := r.Request.Len()
@@ -41,6 +41,8 @@ func (r *Request) Serialize(buff []byte, options base.SerializeOptions) {
 	copy(buff[offset:], r.SrcHost.To16())
 	offset += 16
 	copy(buff[offset:], r.DstHost.To16())
+	offset += 16
+	r.Steps.Serialize(buff[offset:], base.SerializeImmutable)
 }
 
 // SetupReq is an e2e setup/renewal request, that has been so far accepted.

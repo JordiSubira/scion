@@ -398,3 +398,12 @@ func (p PathSteps) Step(i int) (PathStep, error) {
 func (p PathSteps) Len() int {
 	return len(p) * PathStepLen
 }
+
+func (p PathSteps) Serialize(buff []byte, options SerializeOptions) {
+	for _, step := range p {
+		binary.BigEndian.PutUint16(buff, step.Ingress)
+		binary.BigEndian.PutUint16(buff[2:], step.Egress)
+		binary.BigEndian.PutUint64(buff[4:], uint64(step.IA))
+		buff = buff[12:]
+	}
+}
