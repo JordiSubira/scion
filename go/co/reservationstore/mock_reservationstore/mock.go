@@ -41,31 +41,31 @@ func (m *MockManager) EXPECT() *MockManagerMockRecorder {
 }
 
 // ActivateManyRequest mocks base method.
-func (m *MockManager) ActivateManyRequest(arg0 context.Context, arg1 []*reservation.Request, arg2 []path.Path) []error {
+func (m *MockManager) ActivateManyRequest(arg0 context.Context, arg1 []*reservation.Request, arg2 []reservation.PathSteps, arg3 []path.Path) []error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ActivateManyRequest", arg0, arg1, arg2)
+	ret := m.ctrl.Call(m, "ActivateManyRequest", arg0, arg1, arg2, arg3)
 	ret0, _ := ret[0].([]error)
 	return ret0
 }
 
 // ActivateManyRequest indicates an expected call of ActivateManyRequest.
-func (mr *MockManagerMockRecorder) ActivateManyRequest(arg0, arg1, arg2 interface{}) *gomock.Call {
+func (mr *MockManagerMockRecorder) ActivateManyRequest(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ActivateManyRequest", reflect.TypeOf((*MockManager)(nil).ActivateManyRequest), arg0, arg1, arg2)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ActivateManyRequest", reflect.TypeOf((*MockManager)(nil).ActivateManyRequest), arg0, arg1, arg2, arg3)
 }
 
 // ActivateRequest mocks base method.
-func (m *MockManager) ActivateRequest(arg0 context.Context, arg1 *reservation.Request, arg2 path.Path) error {
+func (m *MockManager) ActivateRequest(arg0 context.Context, arg1 *reservation.Request, arg2 reservation.PathSteps, arg3 path.Path) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ActivateRequest", arg0, arg1, arg2)
+	ret := m.ctrl.Call(m, "ActivateRequest", arg0, arg1, arg2, arg3)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // ActivateRequest indicates an expected call of ActivateRequest.
-func (mr *MockManagerMockRecorder) ActivateRequest(arg0, arg1, arg2 interface{}) *gomock.Call {
+func (mr *MockManagerMockRecorder) ActivateRequest(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ActivateRequest", reflect.TypeOf((*MockManager)(nil).ActivateRequest), arg0, arg1, arg2)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ActivateRequest", reflect.TypeOf((*MockManager)(nil).ActivateRequest), arg0, arg1, arg2, arg3)
 }
 
 // GetReservationsAtSource mocks base method.

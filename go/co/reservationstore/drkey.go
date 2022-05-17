@@ -76,8 +76,8 @@ type macVerifier interface {
 	// created by the initial AS for this particular transit AS as, for the immutable parts of
 	// this request. If the request is now at the last AS, it also validates the request at
 	// the destination. Returns true if valid, false otherwise.
-	ValidateRequest(ctx context.Context,
-		req *base.Request, path *base.TransparentPath) (bool, error)
+	ValidateRequest(ctx context.Context, remote addr.IA,
+		req *base.Request, currentStep int, path *base.TransparentPath) (bool, error)
 	// ValidateSegSetupRequest verifies the validity of the source authentication
 	// created by the initial AS for this particular transit AS as, for the immutable parts of
 	// this request. If the request is now at the last AS, it also validates the request at
@@ -241,12 +241,12 @@ func (a *DRKeyAuthenticator) ComputeE2ESetupResponseMAC(ctx context.Context, res
 	return nil
 }
 
-func (a *DRKeyAuthenticator) ValidateRequest(ctx context.Context,
-	req *base.Request, path *base.TransparentPath) (bool, error) {
+func (a *DRKeyAuthenticator) ValidateRequest(ctx context.Context, remote addr.IA,
+	req *base.Request, currentStep int, path *base.TransparentPath) (bool, error) {
 
-	ok, err := a.validateSegmentPayloadInitialMAC(ctx, req.ID, path.SrcIA(),
-		req.Authenticators[path.CurrentStep-1], req.Timestamp, inputInitialBaseRequest(req))
-	if err == nil && ok && req.IsLastAS() {
+	ok, err := a.validateSegmentPayloadInitialMAC(ctx, req.ID, remote,
+		req.Authenticators[currentStep-1], req.Timestamp, inputInitialBaseRequest(req))
+	if err == nil && ok && currentStep >= len(path.Steps)-1 {
 		ok, err = a.validateRequestAtDestination(ctx, req, path.Steps)
 	}
 	return ok, err

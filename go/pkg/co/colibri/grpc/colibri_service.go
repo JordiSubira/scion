@@ -48,7 +48,7 @@ var _ colpb.ColibriServiceServer = (*ColibriService)(nil)
 func (s *ColibriService) SegmentSetup(ctx context.Context, msg *colpb.SegmentSetupRequest) (
 	*colpb.SegmentSetupResponse, error) {
 
-	path, err := extractPathFromCtx(ctx)
+	path, _, err := extractPathIAFromCtx(ctx)
 	if err != nil {
 		log.Error("setup segment", "err", err)
 		return nil, err
@@ -73,7 +73,7 @@ func (s *ColibriService) SegmentSetup(ctx context.Context, msg *colpb.SegmentSet
 func (s *ColibriService) ConfirmSegmentIndex(ctx context.Context,
 	msg *colpb.ConfirmSegmentIndexRequest) (*colpb.ConfirmSegmentIndexResponse, error) {
 
-	path, err := extractPathFromCtx(ctx)
+	path, ia, err := extractPathIAFromCtx(ctx)
 	if err != nil {
 		log.Error("setup segment", "err", err)
 		return nil, err
@@ -84,7 +84,7 @@ func (s *ColibriService) ConfirmSegmentIndex(ctx context.Context,
 		return nil, err
 	}
 	currentStep := int(base.GetCurrentHopField(path))
-	res, err := s.Store.ConfirmSegmentReservation(ctx, req, currentStep, path)
+	res, err := s.Store.ConfirmSegmentReservation(ctx, ia, req, currentStep, path)
 	if err != nil {
 		log.Error("colibri store returned an error", "err", err)
 		return nil, err
@@ -99,7 +99,7 @@ func (s *ColibriService) ConfirmSegmentIndex(ctx context.Context,
 func (s *ColibriService) ActivateSegmentIndex(ctx context.Context,
 	msg *colpb.ActivateSegmentIndexRequest) (*colpb.ActivateSegmentIndexResponse, error) {
 
-	path, err := extractPathFromCtx(ctx)
+	path, ia, err := extractPathIAFromCtx(ctx)
 	if err != nil {
 		log.Error("setup segment", "err", err)
 		return nil, err
@@ -110,7 +110,7 @@ func (s *ColibriService) ActivateSegmentIndex(ctx context.Context,
 		return nil, err
 	}
 	currentStep := int(base.GetCurrentHopField(path))
-	res, err := s.Store.ActivateSegmentReservation(ctx, req, currentStep, path)
+	res, err := s.Store.ActivateSegmentReservation(ctx, ia, req, currentStep, path)
 	if err != nil {
 		log.Error("colibri store returned an error", "err", err)
 		return nil, err
@@ -125,7 +125,7 @@ func (s *ColibriService) ActivateSegmentIndex(ctx context.Context,
 func (s *ColibriService) TeardownSegment(ctx context.Context, msg *colpb.TeardownSegmentRequest) (
 	*colpb.TeardownSegmentResponse, error) {
 
-	path, err := extractPathFromCtx(ctx)
+	path, ia, err := extractPathIAFromCtx(ctx)
 	if err != nil {
 		log.Error("setup segment", "err", err)
 		return nil, err
@@ -136,7 +136,7 @@ func (s *ColibriService) TeardownSegment(ctx context.Context, msg *colpb.Teardow
 		return nil, err
 	}
 	currentStep := int(base.GetCurrentHopField(path))
-	res, err := s.Store.TearDownSegmentReservation(ctx, req, currentStep, path)
+	res, err := s.Store.TearDownSegmentReservation(ctx, ia, req, currentStep, path)
 	if err != nil {
 		log.Error("colibri store returned an error", "err", err)
 		return nil, err
@@ -151,7 +151,7 @@ func (s *ColibriService) TeardownSegment(ctx context.Context, msg *colpb.Teardow
 func (s *ColibriService) CleanupSegmentIndex(ctx context.Context,
 	msg *colpb.CleanupSegmentIndexRequest) (*colpb.CleanupSegmentIndexResponse, error) {
 
-	path, err := extractPathFromCtx(ctx)
+	path, ia, err := extractPathIAFromCtx(ctx)
 	if err != nil {
 		log.Error("setup segment", "err", err)
 		return nil, err
@@ -162,7 +162,7 @@ func (s *ColibriService) CleanupSegmentIndex(ctx context.Context,
 		return nil, err
 	}
 	currentStep := int(base.GetCurrentHopField(path))
-	res, err := s.Store.CleanupSegmentReservation(ctx, req, currentStep, path)
+	res, err := s.Store.CleanupSegmentReservation(ctx, ia, req, currentStep, path)
 	if err != nil {
 		log.Error("colibri store returned an error", "err", err)
 		return nil, err
@@ -434,31 +434,31 @@ func checkLocalCaller(ctx context.Context) (*net.TCPAddr, error) {
 	return tcpaddr, nil
 }
 
-func extractPathFromCtx(ctx context.Context) (slayerspath.Path, error) {
+func extractPathIAFromCtx(ctx context.Context) (slayerspath.Path, addr.IA, error) {
 	gPeer, ok := peer.FromContext(ctx)
 	if !ok {
-		return nil, serrors.New("peer must exist")
+		return nil, addr.IA(0), serrors.New("peer must exist")
 	}
 	logger := log.FromCtx(ctx)
 
 	peer, ok := gPeer.Addr.(*snet.UDPAddr)
 	if !ok {
 		logger.Debug("peer must be *snet.UDPAddr", "actual", fmt.Sprintf("%T", gPeer))
-		return nil, serrors.New("peer must be *snet.UDPAddr", "actual", fmt.Sprintf("%T", gPeer))
+		return nil, addr.IA(0), serrors.New("peer must be *snet.UDPAddr", "actual", fmt.Sprintf("%T", gPeer))
 	}
 
 	path, err := base.PathFromDataplanePath(peer.Path)
 	if err != nil || path == nil {
-		return nil, serrors.WrapStr("decoding path information", err)
+		return nil, addr.IA(0), serrors.WrapStr("decoding path information", err)
 	}
 
 	// XXX(JordiSubira): Hack, reverse path again to recover forwarding direction path
 	fwdPath, err := copyFrom(path).Reverse()
 	if err != nil {
-		return nil, serrors.WrapStr("reversing path", err)
+		return nil, addr.IA(0), serrors.WrapStr("reversing path", err)
 	}
 
-	return fwdPath, nil
+	return fwdPath, peer.IA, nil
 }
 
 func copyFrom(p slayerspath.Path) slayerspath.Path {

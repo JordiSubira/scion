@@ -34,13 +34,13 @@ type Store interface {
 		[]*colibri.ReservationLooks, error)
 	AdmitSegmentReservation(ctx context.Context, req *sgt.SetupReq, currentStep int, rawPath slayerspath.Path) (
 		sgt.SegmentSetupResponse, error)
-	ConfirmSegmentReservation(ctx context.Context, req *base.Request, currentStep int, rawPath slayerspath.Path) (
+	ConfirmSegmentReservation(ctx context.Context, srcIA addr.IA, req *base.Request, currentStep int, rawPath slayerspath.Path) (
 		base.Response, error)
-	ActivateSegmentReservation(ctx context.Context, req *base.Request, currentStep int, rawPath slayerspath.Path) (
+	ActivateSegmentReservation(ctx context.Context, srcIA addr.IA, req *base.Request, currentStep int, rawPath slayerspath.Path) (
 		base.Response, error)
-	CleanupSegmentReservation(ctx context.Context, req *base.Request, currentStep int, rawPath slayerspath.Path) (
+	CleanupSegmentReservation(ctx context.Context, srcIA addr.IA, req *base.Request, currentStep int, rawPath slayerspath.Path) (
 		base.Response, error)
-	TearDownSegmentReservation(ctx context.Context, req *base.Request, currentStep int, rawPath slayerspath.Path) (
+	TearDownSegmentReservation(ctx context.Context, srcIA addr.IA, req *base.Request, currentStep int, rawPath slayerspath.Path) (
 		base.Response, error)
 	AdmitE2EReservation(ctx context.Context, req *e2e.SetupReq) (
 		e2e.SetupResponse, error)
@@ -63,16 +63,20 @@ type Store interface {
 	// InitSegmentReservation starts a new segment reservation.
 	InitSegmentReservation(ctx context.Context, req *sgt.SetupReq, rawPath slayerspath.Path) error
 	// InitConfirmSegmentReservation initiates a confirm request.
-	InitConfirmSegmentReservation(ctx context.Context, req *base.Request, rawPath slayerspath.Path) (
+	InitConfirmSegmentReservation(ctx context.Context, req *base.Request,
+		steps base.PathSteps, rawPath slayerspath.Path) (
 		base.Response, error)
 
-	InitActivateSegmentReservation(ctx context.Context, req *base.Request, rawPath slayerspath.Path) (
+	InitActivateSegmentReservation(ctx context.Context, req *base.Request,
+		steps base.PathSteps, rawPath slayerspath.Path) (
 		base.Response, error)
 
-	InitCleanupSegmentReservation(ctx context.Context, req *base.Request, rawPath slayerspath.Path) (
+	InitCleanupSegmentReservation(ctx context.Context, req *base.Request,
+		steps base.PathSteps, rawPath slayerspath.Path) (
 		base.Response, error)
 
-	InitTearDownSegmentReservation(ctx context.Context, req *base.Request, rawPath slayerspath.Path) (
+	InitTearDownSegmentReservation(ctx context.Context, req *base.Request,
+		steps base.PathSteps, rawPath slayerspath.Path) (
 		base.Response, error)
 
 	// -----------------------------------------------------------

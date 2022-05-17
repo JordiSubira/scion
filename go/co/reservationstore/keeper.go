@@ -211,6 +211,7 @@ func (k *keeper) setupsPerDestination(ctx context.Context, dstIA addr.IA, entrie
 // activateIndices expects reservations that have a confirmed index that can be activated.
 func (k *keeper) activateIndices(ctx context.Context, rsvs []*segment.Reservation) error {
 	reqs := make([]*base.Request, len(rsvs))
+	steps := make([]base.PathSteps, len(rsvs))
 	paths := make([]slayerspath.Path, len(rsvs))
 	for i, rsv := range rsvs {
 		index := rsv.NextIndexToActivate()
@@ -219,9 +220,10 @@ func (k *keeper) activateIndices(ctx context.Context, rsvs []*segment.Reservatio
 				"indices", rsv.Indices.String())
 		}
 		reqs[i] = base.NewRequest(k.manager.Now(), &rsv.ID, index.Idx, rsv.PathAtSource.Copy())
+		steps[i] = rsv.PathAtSource.Copy().Steps
 		paths[i] = rsv.PathAtSource.Copy().RawPath
 	}
-	errs := filterEmptyErrors(k.manager.ActivateManyRequest(ctx, reqs, paths))
+	errs := filterEmptyErrors(k.manager.ActivateManyRequest(ctx, reqs, steps, paths))
 	if len(errs) > 0 {
 		log.Info("errors while activating rsvs", "errs", errs)
 		return serrors.New("errors in activation")
@@ -280,6 +282,7 @@ func (k *keeper) requestNSuccessfulRsvs(ctx context.Context, dstIA addr.IA, entr
 	requests []*seg.SetupReq, pendingCount int) error {
 
 	needActivation := make([]*base.Request, 0)
+	needActivationSteps := make([]base.PathSteps, 0)
 	needActivationPaths := make([]slayerspath.Path, 0)
 	var setups []*seg.SetupReq
 	for pendingCount > 0 && len(requests) > 0 {
@@ -290,6 +293,7 @@ func (k *keeper) requestNSuccessfulRsvs(ctx context.Context, dstIA addr.IA, entr
 			if errs[i] == nil {
 				needActivation = append(needActivation, base.NewRequest(k.manager.Now(), &req.ID,
 					req.Index, req.Path))
+				needActivationSteps = append(needActivationSteps, req.PathAtSource.Steps)
 				needActivationPaths = append(needActivationPaths, req.PathAtSource.RawPath)
 			}
 		}
@@ -303,7 +307,7 @@ func (k *keeper) requestNSuccessfulRsvs(ctx context.Context, dstIA addr.IA, entr
 		return serrors.New("could not request the minimum required of reservations",
 			"dst", dstIA, "requests_len", len(requests))
 	}
-	errs := filterEmptyErrors(k.manager.ActivateManyRequest(ctx, needActivation, needActivationPaths))
+	errs := filterEmptyErrors(k.manager.ActivateManyRequest(ctx, needActivation, needActivationSteps, needActivationPaths))
 	if len(errs) > 0 {
 		log.Info("errors while activating reservations", "errs", errs)
 		return serrors.New("could not activate all reservations", "err_count", len(errs))
