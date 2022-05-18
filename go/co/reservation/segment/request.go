@@ -21,6 +21,7 @@ import (
 	base "github.com/scionproto/scion/go/co/reservation"
 	"github.com/scionproto/scion/go/lib/colibri/reservation"
 	"github.com/scionproto/scion/go/lib/serrors"
+	slayerspath "github.com/scionproto/scion/go/lib/slayers/path"
 	"github.com/scionproto/scion/go/lib/util"
 )
 
@@ -37,18 +38,21 @@ type SetupReq struct {
 	SplitCls         reservation.SplitCls
 	PathProps        reservation.PathEndProps
 	AllocTrail       reservation.AllocationBeads
-	PathAtSource     *base.TransparentPath // requested path (maybe different than transport)
-	ReverseTraveling bool                  // a down rsv traveling to the core to be re-requested
-	Reservation      *Reservation          // nil if no reservation yet
+	ReverseTraveling bool         // a down rsv traveling to the core to be re-requested
+	Reservation      *Reservation // nil if no reservation yet
+	// PathAtSource     *base.TransparentPath // requested path (maybe different than transport)
+	Steps       base.PathSteps   //retrieved from pb request
+	CurrentStep int              //recovered from dataplane
+	RawPath     slayerspath.Path // only set in the srcAS
 }
 
 func (r *SetupReq) Validate() error {
-	if err := r.Request.Validate(r.PathAtSource.Steps); err != nil {
+	if err := r.Request.Validate(r.Steps); err != nil {
 		return err
 	}
-	if len(r.AllocTrail) > len(r.PathAtSource.Steps) {
+	if len(r.AllocTrail) > len(r.Steps) {
 		return serrors.New("inconsistent trail and setup path", "trail", r.AllocTrail,
-			"path", r.PathAtSource)
+			"path", r.Steps)
 	}
 	if err := r.PathProps.ValidateWithPathType(r.PathType); err != nil {
 		return serrors.New("incompatible path type and props", "path_type", r.PathType,
@@ -68,23 +72,23 @@ func (r *SetupReq) ValidateForReservation(rsv *Reservation) error {
 }
 
 func (r *SetupReq) IsFirstAS() bool {
-	return r.PathAtSource.CurrentStep == 0
+	return r.CurrentStep == 0
 }
 
 func (r *SetupReq) IsLastAS() bool { // override the use of the RequestMetadata.path with PathToDst
-	return r.PathAtSource.CurrentStep >= len(r.PathAtSource.Steps)-1
+	return r.CurrentStep >= len(r.Steps)-1
 }
 
 // Ingress returns the ingress interface of this step for this request.
 // Do not call Ingress without validating the request first.
 func (r *SetupReq) Ingress() uint16 {
-	return r.PathAtSource.Steps[r.PathAtSource.CurrentStep].Ingress
+	return r.Steps[r.CurrentStep].Ingress
 }
 
 // Egress returns the egress interface of this step for this request.
 // Do not call Egress without validating the request first.
 func (r *SetupReq) Egress() uint16 {
-	return r.PathAtSource.Steps[r.PathAtSource.CurrentStep].Egress
+	return r.Steps[r.CurrentStep].Egress
 }
 
 func (r *SetupReq) Len() int {

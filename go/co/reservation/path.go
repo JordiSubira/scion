@@ -411,3 +411,15 @@ func (p PathSteps) Serialize(buff []byte, options SerializeOptions) {
 func (p PathSteps) Copy() PathSteps {
 	return append(p[:0:0], p...)
 }
+
+func (p PathSteps) Reverse() PathSteps {
+	if p == nil {
+		return p
+	}
+	rev := make([]PathStep, len(p))
+	for i, s := range p {
+		s.Ingress, s.Egress = s.Egress, s.Ingress
+		rev[len(rev)-i-1] = s
+	}
+	return rev
+}

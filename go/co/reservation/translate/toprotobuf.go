@@ -25,7 +25,7 @@ import (
 )
 
 func PBufSetupReq(req *segment.SetupReq) (*colpb.SegmentSetupRequest, error) {
-	base, err := PBufRequest(&req.Request, req.PathAtSource.Steps)
+	base, err := PBufRequest(&req.Request, req.Steps)
 	if err != nil {
 		return nil, err
 	}

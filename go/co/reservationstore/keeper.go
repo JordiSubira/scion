@@ -292,9 +292,9 @@ func (k *keeper) requestNSuccessfulRsvs(ctx context.Context, dstIA addr.IA, entr
 		for i, req := range setups {
 			if errs[i] == nil {
 				needActivation = append(needActivation, base.NewRequest(k.manager.Now(), &req.ID,
-					req.Index, req.PathAtSource.Steps))
-				needActivationSteps = append(needActivationSteps, req.PathAtSource.Steps)
-				needActivationPaths = append(needActivationPaths, req.PathAtSource.RawPath)
+					req.Index, req.Steps))
+				needActivationSteps = append(needActivationSteps, req.Steps)
+				needActivationPaths = append(needActivationPaths, req.RawPath)
 			}
 		}
 		errs = filterEmptyErrors(errs)
@@ -399,17 +399,19 @@ func (e *requirements) PrepareSetupRequests(paths []snet.Path,
 			Request:        *base.NewRequest(now, &id, 0, transp.Steps),
 			ExpirationTime: expTime,
 			// RLC:            rlc,
-			PathType:     e.pathType,
-			MinBW:        e.minBW,
-			MaxBW:        e.maxBW,
-			SplitCls:     e.splitCls,
-			PathProps:    e.endProps,
-			AllocTrail:   reservation.AllocationBeads{},
-			PathAtSource: transp,
+			PathType:    e.pathType,
+			MinBW:       e.minBW,
+			MaxBW:       e.maxBW,
+			SplitCls:    e.splitCls,
+			PathProps:   e.endProps,
+			AllocTrail:  reservation.AllocationBeads{},
+			Steps:       transp.Steps,
+			CurrentStep: transp.CurrentStep,
+			RawPath:     transp.RawPath,
 		}
 		requests[i] = req
-		log.Debug("keeper prepared request", "id", req.ID, "dst", req.PathAtSource.DstIA(),
-			"path", req.PathAtSource)
+		log.Debug("keeper prepared request", "id", req.ID, "dst", req.Steps.DstIA(),
+			"path", req.Steps)
 	}
 	return requests, nil
 }
@@ -428,14 +430,16 @@ func (e *requirements) PrepareRenewalRequests(rsvs []*seg.Reservation, now, expT
 				rsv.PathAtSource.Steps),
 			ExpirationTime: expTime,
 			// RLC:            e.RLC,
-			PathType:     rsv.PathType,
-			MinBW:        e.minBW,
-			MaxBW:        e.maxBW,
-			SplitCls:     rsv.TrafficSplit,
-			PathProps:    rsv.PathEndProps,
-			AllocTrail:   reservation.AllocationBeads{}, // at source
-			PathAtSource: rsv.PathAtSource,
-			Reservation:  rsv,
+			PathType:    rsv.PathType,
+			MinBW:       e.minBW,
+			MaxBW:       e.maxBW,
+			SplitCls:    rsv.TrafficSplit,
+			PathProps:   rsv.PathEndProps,
+			AllocTrail:  reservation.AllocationBeads{}, // at source
+			Steps:       rsv.PathAtSource.Steps,
+			CurrentStep: rsv.PathAtSource.CurrentStep,
+			RawPath:     rsv.PathAtSource.RawPath,
+			Reservation: rsv,
 		}
 		requests = append(requests, req)
 	}

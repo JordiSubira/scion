@@ -732,10 +732,10 @@ func TestEntryPrepareSetupRequests(t *testing.T) {
 			}
 			for _, req := range requests {
 				// check req.PathToDst is in filtered paths
-				_, ok := bagOfPaths[req.PathAtSource.String()]
-				require.True(t, ok, "path: %s, len(bag)=%d, bag:%s", req.PathAtSource.String(),
+				_, ok := bagOfPaths[base.StepsToString(req.Steps)]
+				require.True(t, ok, "path: %s, len(bag)=%d, bag:%s", base.StepsToString(req.Steps),
 					len(bagOfPaths), bagOfPaths)
-				delete(bagOfPaths, req.PathAtSource.String())
+				delete(bagOfPaths, base.StepsToString(req.Steps))
 				// check the rest of the request
 				require.Equal(t, tc.requirements.minBW, req.MinBW)
 				require.Equal(t, tc.requirements.maxBW, req.MaxBW)

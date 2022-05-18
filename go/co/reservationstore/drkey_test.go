@@ -367,8 +367,9 @@ func TestComputeAndValidateSegmentSetupResponse(t *testing.T) {
 					MinBW:          5,
 					MaxBW:          13,
 					SplitCls:       11,
-					PathAtSource: ct.NewPath(0, "1-ff00:0:111", 1, 1, "1-ff00:0:110", 2,
-						1, "1-ff00:0:112", 2, 1, "1-ff00:0:113", 0),
+					Steps: ct.NewPath(0, "1-ff00:0:111", 1, 1, "1-ff00:0:110", 2,
+						1, "1-ff00:0:112", 2, 1, "1-ff00:0:113", 0).Steps,
+
 					PathProps: reservation.StartLocal | reservation.EndTransfer,
 				},
 			},
@@ -405,7 +406,8 @@ func TestComputeAndValidateSegmentSetupResponse(t *testing.T) {
 					localIA:   authIA,
 					fastKeyer: fakeFastKeyer{localIA: authIA},
 				}
-				err := auth.ComputeSegmentSetupResponseMAC(ctx, tc.res, tc.path)
+				err := auth.ComputeSegmentSetupResponseMAC(ctx, tc.res, tc.path.Steps,
+					tc.path.CurrentStep)
 				require.NoError(t, err)
 			}
 

@@ -244,32 +244,32 @@ func (s *Store) InitSegmentReservation(ctx context.Context, req *segment.SetupRe
 		return s.errNew("reservation not found for a renewal", "id", req.ID.String())
 	}
 	log.Info("COLIBRI requesting setup/renewal", "new_setup", newSetup,
-		"id", req.ID.String(), "idx", req.Index, "dst_ia", req.PathAtSource.DstIA(), "path", req.PathAtSource)
+		"id", req.ID.String(), "idx", req.Index, "dst_ia", req.Steps.DstIA(), "path", req.Steps)
 
-	origPath := req.PathAtSource.Copy()
+	origPath := req.Steps.Copy()
 	rollbackChanges := func(setupRes segment.SegmentSetupResponse) {
 		if failure, ok := setupRes.(*segment.SegmentSetupResponseFailure); ok {
 			if !req.ReverseTraveling {
-				if len(failure.FailedRequest.AllocTrail)+1 < len(origPath.Steps) {
+				if len(failure.FailedRequest.AllocTrail)+1 < len(origPath) {
 					// shorten the path to exclude those nodes the request never transited.
 					// the last node in allocTrail could (or not) have stored the index and
 					// thus would need cleaning.
-					origPath.Steps = origPath.Steps[:len(failure.FailedRequest.AllocTrail)+1]
+					origPath = origPath[:len(failure.FailedRequest.AllocTrail)+1]
 				}
 			}
 		}
-		if len(origPath.Steps) < 2 {
+		if len(origPath) < 2 {
 			// only this AS to contact (or not even here), just don't send any RPC
 			return
 		}
 		// uses the `req` that will have the new ID and index, but the original path
-		req := base.NewRequest(req.Timestamp, &req.ID, req.Index, origPath.Steps)
+		req := base.NewRequest(req.Timestamp, &req.ID, req.Index, origPath)
 		var res base.Response
 		var err error
 		if newSetup {
-			res, err = s.InitTearDownSegmentReservation(ctx, req, origPath.Steps, rawPath)
+			res, err = s.InitTearDownSegmentReservation(ctx, req, origPath, rawPath)
 		} else {
-			res, err = s.InitCleanupSegmentReservation(ctx, req, origPath.Steps, rawPath)
+			res, err = s.InitCleanupSegmentReservation(ctx, req, origPath, rawPath)
 		}
 		if err != nil {
 			log.Info("while cleaning reservations down the path an error occurred",
@@ -289,10 +289,14 @@ func (s *Store) InitSegmentReservation(ctx context.Context, req *segment.SetupRe
 		rsv.PathType = req.PathType
 		rsv.PathEndProps = req.PathProps
 		rsv.TrafficSplit = req.SplitCls
-		rsv.PathAtSource = req.PathAtSource
+		rsv.PathAtSource = &base.TransparentPath{
+			Steps:       req.Steps,
+			CurrentStep: req.CurrentStep,
+			RawPath:     rawPath,
+		}
 
 		if err := s.db.NewSegmentRsv(ctx, rsv); err != nil {
-			return s.errWrapStr("initial reservation creation", err, "dst", req.PathAtSource.DstIA())
+			return s.errWrapStr("initial reservation creation", err, "dst", req.Steps.DstIA())
 		}
 		req.ID = rsv.ID // the DB created a new suffix for the rsv.; copy it to the request
 	}
@@ -307,7 +311,7 @@ func (s *Store) InitSegmentReservation(ctx context.Context, req *segment.SetupRe
 		req.ReverseTraveling = !s.isCore
 		res, err = s.sendUpstreamForAdmission(ctx, req, 0, rawPath)
 	} else {
-		err = s.authenticator.ComputeSegmentSetupRequestInitialMAC(ctx, req, req.PathAtSource.Steps)
+		err = s.authenticator.ComputeSegmentSetupRequestInitialMAC(ctx, req, req.Steps)
 		if err != nil {
 			return err
 		}
@@ -319,7 +323,7 @@ func (s *Store) InitSegmentReservation(ctx context.Context, req *segment.SetupRe
 	}
 	// TODO(juagargi) deprecate the use of ReverseTraveling and all the complexity that it involves.
 	if req.PathType != reservation.DownPath {
-		ok, err := s.authenticator.ValidateSegmentSetupResponse(ctx, res, req.PathAtSource.Steps)
+		ok, err := s.authenticator.ValidateSegmentSetupResponse(ctx, res, req.Steps)
 		if !ok || err != nil {
 			return s.errNew("validation of response failed", "ok", ok, "err", err,
 				"id", req.ID)
@@ -1347,9 +1351,9 @@ func (s *Store) admitSegmentReservation(ctx context.Context, req *segment.SetupR
 		FailedRequest: req,
 	}
 	updateResponse := func(res segment.SegmentSetupResponse) (segment.SegmentSetupResponse, error) {
-		if !req.IsFirstAS() {
+		if !(currentStep == 0) {
 			if err := s.authenticator.ComputeSegmentSetupResponseMAC(ctx, failedResponse,
-				req.PathAtSource); err != nil {
+				req.Steps, currentStep); err != nil {
 
 				return nil, serrors.WrapStr("computing seg. setup response authentication", err)
 			}
@@ -1357,7 +1361,8 @@ func (s *Store) admitSegmentReservation(ctx context.Context, req *segment.SetupR
 		return res, nil
 	}
 
-	logger.Debug("segment admission", "id", req.ID, "path", req.PathAtSource)
+	logger.Debug("segment admission", "id", req.ID, "steps", req.Steps, "current", currentStep,
+		"rawPath", rawPath)
 	if err := req.Validate(); err != nil {
 		failedResponse.Message = s.errWrapStr("request failed validation", err).Error()
 		return updateResponse(failedResponse)
@@ -1394,7 +1399,11 @@ func (s *Store) admitSegmentReservation(ctx context.Context, req *segment.SetupR
 		rsv.PathType = req.PathType
 		rsv.PathEndProps = req.PathProps
 		rsv.TrafficSplit = req.SplitCls
-		rsv.PathAtSource = req.PathAtSource // opaque for all AS but the source AS
+		rsv.PathAtSource = &base.TransparentPath{
+			Steps:       req.Steps,
+			CurrentStep: currentStep,
+			RawPath:     rawPath,
+		} // opaque for all AS but the source AS
 		// we are going to extend a bit the information in the path of this reservation: if this
 		// AS is at the beginning of the path or at the end, we can annotate the opaque path with
 		// our IA id:
@@ -1453,7 +1462,7 @@ func (s *Store) admitSegmentReservation(ctx context.Context, req *segment.SetupR
 	}
 
 	// update token with new hop field
-	step := req.PathAtSource.Steps[currentStep]
+	step := req.Steps[currentStep]
 	if err = s.computeMAC(rsv.ID.Suffix, &res.Token, req.ID.ASID, req.ID.ASID,
 		step.Ingress, step.Egress); err != nil {
 		failedResponse.Message = s.errWrapStr("cannot compute MAC", err).Error()
@@ -1474,7 +1483,7 @@ func (s *Store) admitSegmentReservation(ctx context.Context, req *segment.SetupR
 	}
 
 	if !req.IsFirstAS() {
-		err = s.authenticator.ComputeSegmentSetupResponseMAC(ctx, res, req.PathAtSource)
+		err = s.authenticator.ComputeSegmentSetupResponseMAC(ctx, res, req.Steps, currentStep)
 	}
 
 	return res, err
@@ -1484,11 +1493,11 @@ func (s *Store) getTokenFromDownstreamAdmission(ctx context.Context, req *segmen
 	segment.SegmentSetupResponse, error) {
 
 	// authenticate request for the destination AS
-	if err := s.authenticator.ComputeSegmentSetupRequestTransitMAC(ctx, req, req.PathAtSource.DstIA(), req.PathAtSource.CurrentStep); err != nil {
+	if err := s.authenticator.ComputeSegmentSetupRequestTransitMAC(ctx, req, req.Steps.DstIA(), req.CurrentStep); err != nil {
 		return nil, serrors.WrapStr("computing in transit seg. setup authenticator", err)
 	}
 
-	client, err := s.operator.ColibriClient(ctx, base.EgressFromDataPlanePath(rawPath), req.PathAtSource.RawPath)
+	client, err := s.operator.ColibriClient(ctx, base.EgressFromDataPlanePath(rawPath), rawPath)
 	if err != nil {
 		log.Debug("error finding a colibri service client", "err", err)
 		return nil, serrors.WrapStr("while finding a colibri service client", err)
@@ -1523,17 +1532,17 @@ func (s *Store) sendUpstreamForAdmission(ctx context.Context, req *segment.Setup
 
 	if req.IsLastAS() {
 		req.ReverseTraveling = false
-		if err := req.PathAtSource.Reverse(); err != nil {
-			failedResponse.Message = "cannot reverse path at first node in reverse trip: " +
-				err.Error()
-			return failedResponse, err
-		}
-		err := s.authenticator.ComputeSegmentSetupRequestInitialMAC(ctx, req, req.PathAtSource.Steps)
+		req.Steps = req.Steps.Reverse()
+		err := s.authenticator.ComputeSegmentSetupRequestInitialMAC(ctx, req, req.Steps)
 		if err != nil {
 			return nil, err
 		}
-
-		return s.admitSegmentReservation(ctx, req, currentStep, rawPath)
+		req.CurrentStep = 0
+		revPath, err := rawPath.Reverse()
+		if err != nil {
+			return nil, serrors.WrapStr("reversing rawPath", err)
+		}
+		return s.admitSegmentReservation(ctx, req, 0, revPath)
 	}
 	// forward to next colibri service upstream
 	client, err := s.operator.ColibriClient(ctx, req.Egress(), rawPath)
@@ -1555,7 +1564,7 @@ func (s *Store) sendUpstreamForAdmission(ctx context.Context, req *segment.Setup
 	}
 	if !req.IsFirstAS() {
 		// create authenticators before passing the response to the previous node in the path
-		if err := s.authenticator.ComputeSegmentSetupResponseMAC(ctx, res, req.PathAtSource); err != nil {
+		if err := s.authenticator.ComputeSegmentSetupResponseMAC(ctx, res, req.Steps, currentStep); err != nil {
 			return failedResponse, s.errWrapStr("computing authenticators for response", err)
 		}
 	}
