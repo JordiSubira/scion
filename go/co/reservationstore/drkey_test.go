@@ -57,7 +57,7 @@ func TestE2EBaseReqInitialMac(t *testing.T) {
 			transitReq: e2e.Request{
 				Request: *base.NewRequest(util.SecsToTime(1),
 					ct.MustParseID("ff00:0:111", "0123456789abcdef01234567"), 3,
-					ct.NewPath(0, "1-ff00:0:111", 1, 1, "1-ff00:0:110", 2, 1, "1-ff00:0:112", 0)),
+					ct.NewPath(0, "1-ff00:0:111", 1, 1, "1-ff00:0:110", 2, 1, "1-ff00:0:112", 0).Steps),
 				SrcHost: net.ParseIP(srcHost()),
 				DstHost: net.ParseIP(dstHost()),
 			},
@@ -122,7 +122,7 @@ func TestE2ESetupReqInitialMac(t *testing.T) {
 					Request: *base.NewRequest(util.SecsToTime(1),
 						ct.MustParseID("ff00:0:111", "0123456789abcdef01234567"), 3,
 						ct.NewPath(0, "1-ff00:0:111", 1, 1, "1-ff00:0:110", 2,
-							1, "1-ff00:0:112", 0)),
+							1, "1-ff00:0:112", 0).Steps),
 					SrcHost: net.ParseIP(srcHost()),
 					DstHost: net.ParseIP(dstHost()),
 				},
@@ -174,7 +174,7 @@ func TestE2ERequestTransitMac(t *testing.T) {
 			transitReq: e2e.Request{
 				Request: *base.NewRequest(util.SecsToTime(1),
 					ct.MustParseID("ff00:0:111", "0123456789abcdef01234567"), 3,
-					ct.NewPath(0, "1-ff00:0:111", 1, 1, "1-ff00:0:110", 2, 1, "1-ff00:0:112", 0)),
+					ct.NewPath(0, "1-ff00:0:111", 1, 1, "1-ff00:0:110", 2, 1, "1-ff00:0:112", 0).Steps),
 				SrcHost: net.ParseIP(srcHost()),
 				DstHost: net.ParseIP(dstHost()),
 			},
@@ -223,7 +223,7 @@ func TestE2ESetupRequestTransitMac(t *testing.T) {
 					Request: *base.NewRequest(util.SecsToTime(1),
 						ct.MustParseID("ff00:0:111", "0123456789abcdef01234567"), 3,
 						ct.NewPath(0, "1-ff00:0:111", 1, 1, "1-ff00:0:110", 2,
-							1, "1-ff00:0:112", 0)),
+							1, "1-ff00:0:112", 0).Steps),
 					SrcHost: net.ParseIP(srcHost()),
 					DstHost: net.ParseIP(dstHost()),
 				},
@@ -313,7 +313,7 @@ func TestComputeAndValidateResponse(t *testing.T) {
 				slowKeyer: fakeSlowKeyer{localIA: srcIA},
 			}
 			tc.path.CurrentStep = 0
-			ok, err := auth.ValidateResponse(ctx, tc.res, tc.path)
+			ok, err := auth.ValidateResponse(ctx, tc.res, tc.path.Steps)
 			require.NoError(t, err)
 			require.True(t, ok)
 		})
@@ -359,8 +359,6 @@ func TestComputeAndValidateSegmentSetupResponse(t *testing.T) {
 							Index:     1,
 							Timestamp: util.SecsToTime(1),
 						},
-						Path: ct.NewPath(0, "1-ff00:0:111", 1, 1, "1-ff00:0:110", 2,
-							1, "1-ff00:0:112", 2, 1, "1-ff00:0:113", 0),
 						Authenticators: make([][]byte, 3),
 					},
 					ExpirationTime: util.SecsToTime(300),

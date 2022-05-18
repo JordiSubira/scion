@@ -172,7 +172,6 @@ func getKeysWithLocalIA(ctx context.Context, conn DRKeyGetter, steps []base.Path
 
 func minSizeBaseReq(req *BaseRequest) int {
 	return req.Id.Len() + 1 + 4 + // ID + index + time_stamp
-		+req.Path.Len() + // path
 		16 + 16 + // srcHost + dstHost
 		base.PathSteps(req.Path.Steps).Len()
 }
@@ -193,9 +192,6 @@ func serializeBaseRequest(buff []byte, req *BaseRequest) {
 	offset++
 	binary.BigEndian.PutUint32(buff[offset:], util.TimeToSecs(req.TimeStamp))
 	offset += 4
-	// path:
-	req.Path.Serialize(buff[offset:], base.SerializeImmutable)
-	offset += req.Path.Len()
 	// src and dst hosts:
 	copy(buff[offset:], req.SrcHost.To16())
 	offset += 16

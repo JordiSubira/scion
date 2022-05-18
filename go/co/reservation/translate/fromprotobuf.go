@@ -35,7 +35,7 @@ func SetupReq(msg *colpb.SegmentSetupRequest, rawPath slayerspath.Path) (*segmen
 	if msg == nil || msg.Base == nil || msg.Params == nil {
 		return nil, serrors.New("incomplete message", "msg", msg)
 	}
-	base, err := Request(msg.Base, rawPath)
+	baseReq, err := Request(msg.Base, rawPath)
 	if err != nil {
 		return nil, err
 	}
@@ -45,7 +45,7 @@ func SetupReq(msg *colpb.SegmentSetupRequest, rawPath slayerspath.Path) (*segmen
 		return nil, err
 	}
 	req := &segment.SetupReq{
-		Request:          *base,
+		Request:          *baseReq,
 		ExpirationTime:   expTime,
 		RLC:              rlc,
 		PathType:         pathType,
@@ -55,22 +55,31 @@ func SetupReq(msg *colpb.SegmentSetupRequest, rawPath slayerspath.Path) (*segmen
 		PathProps:        pathProps,
 		AllocTrail:       allocTrail,
 		ReverseTraveling: revTravel,
+		PathAtSource: &base.TransparentPath{
+			CurrentStep: int(base.GetCurrentHopField(rawPath)),
+			Steps:       TransparentPathSteps(msg.Base.Steps),
+			RawPath:     rawPath,
+		},
 	}
 	return req, nil
 }
 
 func E2ERequest(msg *colpb.E2ERequest, rawPath slayerspath.Path) (*e2e.Request, error) {
-	base, err := Request(msg.Base, rawPath)
+	baseReq, err := Request(msg.Base, rawPath)
 	if err != nil {
 		return nil, err
 	}
-	base.Path.CurrentStep = int(msg.CurrentStep)
 	return &e2e.Request{
-		Request:     *base,
+		Request:     *baseReq,
 		SrcHost:     msg.SrcHost,
 		DstHost:     msg.DstHost,
 		CurrentStep: int(msg.CurrentStep),
 		Steps:       TransparentPathSteps(msg.Steps),
+		Path: &base.TransparentPath{
+			CurrentStep: int(msg.CurrentStep),
+			Steps:       TransparentPathSteps(msg.Base.Steps),
+			RawPath:     rawPath,
+		},
 	}, nil
 }
 
@@ -179,12 +188,6 @@ func Request(msg *colpb.Request, rawPath slayerspath.Path) (*base.Request, error
 			Index:     idx,
 			Timestamp: timestamp,
 		},
-		Path: &base.TransparentPath{
-			CurrentStep: int(base.GetCurrentHopField(rawPath)),
-			Steps:       TransparentPathSteps(msg.Steps),
-			RawPath:     rawPath,
-		},
-
 		Authenticators: msg.Authenticators.Macs,
 	}, nil
 }

@@ -407,3 +407,7 @@ func (p PathSteps) Serialize(buff []byte, options SerializeOptions) {
 		buff = buff[12:]
 	}
 }
+
+func (p PathSteps) Copy() PathSteps {
+	return append(p[:0:0], p...)
+}

@@ -353,17 +353,18 @@ func (s *ColibriService) CleanupReservation(ctx context.Context,
 	if _, err := checkLocalCaller(ctx); err != nil {
 		return nil, err
 	}
-	trans := base.TransparentPath{
-		Steps: translate.TransparentPathSteps(msg.Base.Steps),
-	}
 
 	// TODO: RawPath must be recovered from the existing reservation to clean
 	req := &e2e.Request{
 		Request: *base.NewRequest(time.Now(), translate.ID(msg.Base.Id),
-			reservation.IndexNumber(msg.Base.Index), &trans),
-		SrcHost: msg.SrcHost,
-		DstHost: msg.DstHost,
-		Steps:   translate.TransparentPathSteps(msg.Base.Steps),
+			reservation.IndexNumber(msg.Base.Index), translate.TransparentPathSteps(msg.Base.Steps)),
+		SrcHost:     msg.SrcHost,
+		DstHost:     msg.DstHost,
+		Steps:       translate.TransparentPathSteps(msg.Base.Steps),
+		CurrentStep: 0,
+		Path: &base.TransparentPath{
+			RawPath: empty.Path{},
+		},
 	}
 	req.Authenticators = msg.Base.Authenticators.Macs
 

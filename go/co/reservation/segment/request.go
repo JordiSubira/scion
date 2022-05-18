@@ -43,12 +43,12 @@ type SetupReq struct {
 }
 
 func (r *SetupReq) Validate() error {
-	if err := r.Request.Validate(); err != nil {
+	if err := r.Request.Validate(r.PathAtSource.Steps); err != nil {
 		return err
 	}
-	if len(r.AllocTrail) > len(r.Path.Steps) {
+	if len(r.AllocTrail) > len(r.PathAtSource.Steps) {
 		return serrors.New("inconsistent trail and setup path", "trail", r.AllocTrail,
-			"path", r.Path)
+			"path", r.PathAtSource)
 	}
 	if err := r.PathProps.ValidateWithPathType(r.PathType); err != nil {
 		return serrors.New("incompatible path type and props", "path_type", r.PathType,
@@ -65,6 +65,26 @@ func (r *SetupReq) ValidateForReservation(rsv *Reservation) error {
 		return serrors.New("different path end props.", "req", r.PathProps, "rsv", rsv.PathEndProps)
 	}
 	return nil
+}
+
+func (r *SetupReq) IsFirstAS() bool {
+	return r.PathAtSource.CurrentStep == 0
+}
+
+func (r *SetupReq) IsLastAS() bool { // override the use of the RequestMetadata.path with PathToDst
+	return r.PathAtSource.CurrentStep >= len(r.PathAtSource.Steps)-1
+}
+
+// Ingress returns the ingress interface of this step for this request.
+// Do not call Ingress without validating the request first.
+func (r *SetupReq) Ingress() uint16 {
+	return r.PathAtSource.Steps[r.PathAtSource.CurrentStep].Ingress
+}
+
+// Egress returns the egress interface of this step for this request.
+// Do not call Egress without validating the request first.
+func (r *SetupReq) Egress() uint16 {
+	return r.PathAtSource.Steps[r.PathAtSource.CurrentStep].Egress
 }
 
 func (r *SetupReq) Len() int {

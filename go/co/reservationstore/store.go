@@ -263,7 +263,7 @@ func (s *Store) InitSegmentReservation(ctx context.Context, req *segment.SetupRe
 			return
 		}
 		// uses the `req` that will have the new ID and index, but the original path
-		req := base.NewRequest(req.Timestamp, &req.ID, req.Index, origPath)
+		req := base.NewRequest(req.Timestamp, &req.ID, req.Index, origPath.Steps)
 		var res base.Response
 		var err error
 		if newSetup {
@@ -431,24 +431,13 @@ func (s *Store) AdmitSegmentReservation(ctx context.Context, req *segment.SetupR
 	return s.admitSegmentReservation(ctx, req, currentStep, rawPath)
 }
 
-func (s *Store) validateAuthBaseReq(ctx context.Context, remote addr.IA,
-	req *base.Request, currenStep int, path *base.TransparentPath) error {
-	if err := req.Validate(); err != nil {
-		return serrors.Wrap(ErrValidate, err)
-	}
-	if err := s.authenticateReq(ctx, remote, req, currenStep, path); err != nil {
-		return serrors.Wrap(ErrAuthenticate, err)
-	}
-	return nil
-}
-
-func newFailedMessage(req *base.Request) *base.ResponseFailure {
+func newFailedMessage(req *base.Request, currentStep int) *base.ResponseFailure {
 	return &base.ResponseFailure{
 		AuthenticatedResponse: base.AuthenticatedResponse{
 			Timestamp:      req.Timestamp,
 			Authenticators: make([][]byte, len(req.Authenticators)),
 		},
-		FailedStep: uint8(req.Path.CurrentStep),
+		FailedStep: uint8(currentStep),
 	}
 }
 
@@ -458,16 +447,15 @@ func (s *Store) ConfirmSegmentReservation(ctx context.Context, srcIA addr.IA, re
 	base.Response, error) {
 
 	// TODO: pack the common code to this segment-related functions
-	failedResponse := newFailedMessage(req)
+	failedResponse := newFailedMessage(req, currentStep)
 	if !(currentStep == 0) {
 		if err := s.authenticator.ComputeResponseMAC(ctx, failedResponse,
 			srcIA, currentStep); err != nil {
 			return nil, serrors.WrapStr("authenticating response", err)
 		}
 	}
-	if err := req.Validate(); err != nil {
-		err = serrors.Wrap(ErrValidate, err)
-
+	if req.ID.ASID == 0 {
+		failedResponse.Message = "bad AS id in request"
 		return failedResponse, nil
 	}
 	tx, err := s.db.BeginTransaction(ctx, nil)
@@ -482,6 +470,11 @@ func (s *Store) ConfirmSegmentReservation(ctx context.Context, srcIA addr.IA, re
 	}
 	if rsv == nil {
 		failedResponse.Message = "no reservation found"
+		return failedResponse, nil
+	}
+	if len(req.Authenticators) != len(rsv.PathAtSource.Steps)-1 {
+		failedResponse.Message = fmt.Sprintln("inconsistent number of authenticators",
+			"auth_count", len(req.Authenticators), "path_len", len(rsv.PathAtSource.Steps))
 		return failedResponse, nil
 	}
 	if err := s.authenticateReq(ctx, srcIA, req, currentStep, rsv.PathAtSource); err != nil {
@@ -520,7 +513,8 @@ func (s *Store) ConfirmSegmentReservation(ctx context.Context, srcIA addr.IA, re
 	} else {
 		// authenticate request for the destination AS
 		// TODO(JordiSubira): To be changed by reservation steps
-		if err := s.authenticator.ComputeRequestTransitMAC(ctx, req, rsv.PathAtSource.DstIA(), currentStep); err != nil {
+		if err := s.authenticator.ComputeRequestTransitMAC(ctx, req, rsv.PathAtSource.DstIA(),
+			currentStep, rsv.PathAtSource.Steps); err != nil {
 			return nil, serrors.WrapStr("computing in transit seg. authenticator", err)
 		}
 
@@ -530,7 +524,7 @@ func (s *Store) ConfirmSegmentReservation(ctx context.Context, srcIA addr.IA, re
 			return failedResponse, s.errWrapStr("while finding a colibri service client", err)
 		}
 
-		base, err := translate.PBufRequest(req)
+		base, err := translate.PBufRequest(req, rsv.PathAtSource.Steps)
 		if err != nil {
 			return failedResponse, s.err(err)
 		}
@@ -541,7 +535,7 @@ func (s *Store) ConfirmSegmentReservation(ctx context.Context, srcIA addr.IA, re
 		}
 		res = translate.Response(pbRes.Base)
 		if currentStep == 0 {
-			ok, err := s.authenticator.ValidateResponse(ctx, res, rsv.PathAtSource)
+			ok, err := s.authenticator.ValidateResponse(ctx, res, rsv.PathAtSource.Steps)
 			if !ok || err != nil {
 				return failedResponse, s.errNew("validation of response failed", "ok", ok,
 					"err", err, "id", req.ID)
@@ -568,16 +562,15 @@ func (s *Store) ActivateSegmentReservation(ctx context.Context, srcIA addr.IA,
 	base.Response, error) {
 
 	// TODO: pack the common code to this segment-related functions
-	failedResponse := newFailedMessage(req)
+	failedResponse := newFailedMessage(req, currentStep)
 	if !(currentStep == 0) {
 		if err := s.authenticator.ComputeResponseMAC(ctx, failedResponse,
 			srcIA, currentStep); err != nil {
 			return nil, serrors.WrapStr("authenticating response", err)
 		}
 	}
-	if err := req.Validate(); err != nil {
-		err = serrors.Wrap(ErrValidate, err)
-
+	if req.ID.ASID == 0 {
+		failedResponse.Message = "bad AS id in request"
 		return failedResponse, nil
 	}
 	tx, err := s.db.BeginTransaction(ctx, nil)
@@ -592,6 +585,11 @@ func (s *Store) ActivateSegmentReservation(ctx context.Context, srcIA addr.IA,
 	}
 	if rsv == nil {
 		failedResponse.Message = "no reservation found"
+		return failedResponse, nil
+	}
+	if len(req.Authenticators) != len(rsv.PathAtSource.Steps)-1 {
+		failedResponse.Message = fmt.Sprintln("inconsistent number of authenticators",
+			"auth_count", len(req.Authenticators), "path_len", len(rsv.PathAtSource.Steps))
 		return failedResponse, nil
 	}
 	if err := s.authenticateReq(ctx, srcIA, req, currentStep, rsv.PathAtSource); err != nil {
@@ -643,7 +641,8 @@ func (s *Store) ActivateSegmentReservation(ctx context.Context, srcIA addr.IA,
 
 	// authenticate request for the destination AS
 	// TODO(JordiSubira): To be changed by reservation steps
-	if err := s.authenticator.ComputeRequestTransitMAC(ctx, req, rsv.PathAtSource.DstIA(), currentStep); err != nil {
+	if err := s.authenticator.ComputeRequestTransitMAC(ctx, req, rsv.PathAtSource.DstIA(),
+		currentStep, rsv.PathAtSource.Steps); err != nil {
 		return nil, serrors.WrapStr("computing in transit seg. authenticator", err)
 	}
 	// forward to next colibri service
@@ -652,7 +651,7 @@ func (s *Store) ActivateSegmentReservation(ctx context.Context, srcIA addr.IA,
 		return failedResponse, s.errWrapStr("while finding a colibri service client", err)
 	}
 
-	base, err := translate.PBufRequest(req)
+	base, err := translate.PBufRequest(req, rsv.PathAtSource.Steps)
 	if err != nil {
 		return failedResponse, s.errWrapStr("translation failed", err)
 	}
@@ -663,7 +662,7 @@ func (s *Store) ActivateSegmentReservation(ctx context.Context, srcIA addr.IA,
 	}
 	res := translate.Response(pbRes.Base)
 	if currentStep == 0 {
-		ok, err := s.authenticator.ValidateResponse(ctx, res, rsv.PathAtSource)
+		ok, err := s.authenticator.ValidateResponse(ctx, res, rsv.PathAtSource.Steps)
 		if !ok || err != nil {
 			return failedResponse, s.errNew("validation of response failed", "ok", ok, "err", err,
 				"id", req.ID)
@@ -684,16 +683,15 @@ func (s *Store) CleanupSegmentReservation(ctx context.Context, srcIA addr.IA, re
 	base.Response, error) {
 
 	// TODO: pack the common code to this segment-related functions
-	failedResponse := newFailedMessage(req)
+	failedResponse := newFailedMessage(req, currentStep)
 	if !(currentStep == 0) {
 		if err := s.authenticator.ComputeResponseMAC(ctx, failedResponse,
 			srcIA, currentStep); err != nil {
 			return nil, serrors.WrapStr("authenticating response", err)
 		}
 	}
-	if err := req.Validate(); err != nil {
-		err = serrors.Wrap(ErrValidate, err)
-
+	if req.ID.ASID == 0 {
+		failedResponse.Message = "bad AS id in request"
 		return failedResponse, nil
 	}
 	tx, err := s.db.BeginTransaction(ctx, nil)
@@ -708,6 +706,11 @@ func (s *Store) CleanupSegmentReservation(ctx context.Context, srcIA addr.IA, re
 	}
 	if rsv == nil {
 		failedResponse.Message = "no reservation found"
+		return failedResponse, nil
+	}
+	if len(req.Authenticators) != len(rsv.PathAtSource.Steps)-1 {
+		failedResponse.Message = fmt.Sprintln("inconsistent number of authenticators",
+			"auth_count", len(req.Authenticators), "path_len", len(rsv.PathAtSource.Steps))
 		return failedResponse, nil
 	}
 	if err := s.authenticateReq(ctx, srcIA, req, currentStep, rsv.PathAtSource); err != nil {
@@ -752,7 +755,8 @@ func (s *Store) CleanupSegmentReservation(ctx context.Context, srcIA addr.IA, re
 
 	// authenticate request for the destination AS
 	// TODO(JordiSubira): To be changed by reservation steps
-	if err := s.authenticator.ComputeRequestTransitMAC(ctx, req, rsv.PathAtSource.DstIA(), currentStep); err != nil {
+	if err := s.authenticator.ComputeRequestTransitMAC(ctx, req, rsv.PathAtSource.DstIA(), currentStep,
+		rsv.PathAtSource.Steps); err != nil {
 		return nil, serrors.WrapStr("computing in transit seg. authenticator", err)
 	}
 	// forward to next colibri service
@@ -761,7 +765,7 @@ func (s *Store) CleanupSegmentReservation(ctx context.Context, srcIA addr.IA, re
 		return failedResponse, s.errWrapStr("while finding a colibri service client", err)
 	}
 
-	base, err := translate.PBufRequest(req)
+	base, err := translate.PBufRequest(req, rsv.PathAtSource.Steps)
 	if err != nil {
 		return failedResponse, s.errWrapStr("translation failed", err)
 	}
@@ -772,7 +776,7 @@ func (s *Store) CleanupSegmentReservation(ctx context.Context, srcIA addr.IA, re
 	}
 	res := translate.Response(pbRes.Base)
 	if currentStep == 0 {
-		ok, err := s.authenticator.ValidateResponse(ctx, res, rsv.PathAtSource)
+		ok, err := s.authenticator.ValidateResponse(ctx, res, rsv.PathAtSource.Steps)
 		if !ok || err != nil {
 			return failedResponse, s.errNew("validation of response failed", "ok", ok, "err", err,
 				"id", req.ID)
@@ -793,16 +797,15 @@ func (s *Store) TearDownSegmentReservation(ctx context.Context, srcIA addr.IA, r
 	base.Response, error) {
 
 	// TODO: pack the common code to this segment-related functions
-	failedResponse := newFailedMessage(req)
+	failedResponse := newFailedMessage(req, currentStep)
 	if !(currentStep == 0) {
 		if err := s.authenticator.ComputeResponseMAC(ctx, failedResponse,
 			srcIA, currentStep); err != nil {
 			return nil, serrors.WrapStr("authenticating response", err)
 		}
 	}
-	if err := req.Validate(); err != nil {
-		err = serrors.Wrap(ErrValidate, err)
-
+	if req.ID.ASID == 0 {
+		failedResponse.Message = "bad AS id in request"
 		return failedResponse, nil
 	}
 	tx, err := s.db.BeginTransaction(ctx, nil)
@@ -817,6 +820,11 @@ func (s *Store) TearDownSegmentReservation(ctx context.Context, srcIA addr.IA, r
 	}
 	if rsv == nil {
 		failedResponse.Message = "no reservation found"
+		return failedResponse, nil
+	}
+	if len(req.Authenticators) != len(rsv.PathAtSource.Steps)-1 {
+		failedResponse.Message = fmt.Sprintln("inconsistent number of authenticators",
+			"auth_count", len(req.Authenticators), "path_len", len(rsv.PathAtSource.Steps))
 		return failedResponse, nil
 	}
 	if err := s.authenticateReq(ctx, srcIA, req, currentStep, rsv.PathAtSource); err != nil {
@@ -857,7 +865,8 @@ func (s *Store) TearDownSegmentReservation(ctx context.Context, srcIA addr.IA, r
 
 	// authenticate request for the destination AS
 	// TODO(JordiSubira): To be changed by reservation steps
-	if err := s.authenticator.ComputeRequestTransitMAC(ctx, req, rsv.PathAtSource.DstIA(), currentStep); err != nil {
+	if err := s.authenticator.ComputeRequestTransitMAC(ctx, req, rsv.PathAtSource.DstIA(), currentStep,
+		rsv.PathAtSource.Steps); err != nil {
 		return nil, serrors.WrapStr("computing in transit seg. authenticator", err)
 	}
 	// forward to next colibri service
@@ -866,7 +875,7 @@ func (s *Store) TearDownSegmentReservation(ctx context.Context, srcIA addr.IA, r
 		return failedResponse, s.errWrapStr("while finding a colibri service client", err)
 	}
 
-	base, err := translate.PBufRequest(req)
+	base, err := translate.PBufRequest(req, rsv.PathAtSource.Steps)
 	if err != nil {
 		return failedResponse, s.errWrapStr("translation failed", err)
 	}
@@ -877,7 +886,7 @@ func (s *Store) TearDownSegmentReservation(ctx context.Context, srcIA addr.IA, r
 	}
 	res := translate.Response(pbRes.Base)
 	if currentStep == 0 {
-		ok, err := s.authenticator.ValidateResponse(ctx, res, rsv.PathAtSource)
+		ok, err := s.authenticator.ValidateResponse(ctx, res, rsv.PathAtSource.Steps)
 		if !ok || err != nil {
 			return failedResponse, s.errNew("validation of response failed", "ok", ok, "err", err,
 				"id", req.ID)
@@ -1157,7 +1166,7 @@ func (s *Store) CleanupE2EReservation(ctx context.Context, req *e2e.Request) (
 			Timestamp:      req.Timestamp,
 			Authenticators: make([][]byte, len(req.Authenticators)),
 		},
-		FailedStep: uint8(req.Path.CurrentStep),
+		FailedStep: uint8(req.CurrentStep),
 		Message:    "failed to cleanup e2e index",
 	}
 	if !req.IsFirstAS() {
@@ -1212,7 +1221,7 @@ func (s *Store) CleanupE2EReservation(ctx context.Context, req *e2e.Request) (
 				Authenticators: make([][]byte, len(req.Authenticators)),
 			},
 		}
-		err = s.authenticator.ComputeResponseMAC(ctx, res, req.Path.SrcIA(), req.Path.CurrentStep)
+		err = s.authenticator.ComputeResponseMAC(ctx, res, req.Steps.SrcIA(), req.CurrentStep)
 		if err != nil {
 			return failedResponse, s.errWrapStr("computing authenticators for response", err)
 		}
@@ -1220,11 +1229,11 @@ func (s *Store) CleanupE2EReservation(ctx context.Context, req *e2e.Request) (
 	}
 	// authenticate the semi mutable parts of the request, to be validated at the destination
 	// TODO(JordiSubira): To be changed by reservation steps
-	if err := s.authenticator.ComputeE2ERequestTransitMAC(ctx, req, req.Path.DstIA(), req.Path.CurrentStep); err != nil {
+	if err := s.authenticator.ComputeE2ERequestTransitMAC(ctx, req, req.Steps.DstIA(), req.Path.CurrentStep); err != nil {
 		return nil, serrors.WrapStr("computing in transit e2e base request authenticator", err)
 	}
 	// forward to next colibri service
-	client, err := s.operator.ColibriClient(ctx, req.Path.GetCurrentStep().Egress, req.Path.RawPath)
+	client, err := s.operator.ColibriClient(ctx, req.Egress(), req.Path.RawPath)
 	if err != nil {
 		return failedResponse, s.errWrapStr("while finding a colibri service client", err)
 	}
@@ -1240,14 +1249,14 @@ func (s *Store) CleanupE2EReservation(ctx context.Context, req *e2e.Request) (
 	}
 	res := translate.Response(pbRes.Base)
 	if req.IsFirstAS() {
-		ok, err := s.authenticator.ValidateResponse(ctx, res, req.Path)
+		ok, err := s.authenticator.ValidateResponse(ctx, res, req.Steps)
 		if !ok || err != nil {
 			return failedResponse, s.errNew("validation of response failed", "ok", ok, "err", err,
 				"id", req.ID)
 		}
 	} else {
 		// create authenticators before passing the response to the previous node in the path
-		if err := s.authenticator.ComputeResponseMAC(ctx, res, req.Path.SrcIA(),
+		if err := s.authenticator.ComputeResponseMAC(ctx, res, req.Steps.SrcIA(),
 			req.Path.CurrentStep); err != nil {
 			return failedResponse, s.errWrapStr("computing authenticators for response", err)
 		}
@@ -1340,7 +1349,7 @@ func (s *Store) admitSegmentReservation(ctx context.Context, req *segment.SetupR
 	updateResponse := func(res segment.SegmentSetupResponse) (segment.SegmentSetupResponse, error) {
 		if !req.IsFirstAS() {
 			if err := s.authenticator.ComputeSegmentSetupResponseMAC(ctx, failedResponse,
-				req.Path); err != nil {
+				req.PathAtSource); err != nil {
 
 				return nil, serrors.WrapStr("computing seg. setup response authentication", err)
 			}
@@ -1348,8 +1357,7 @@ func (s *Store) admitSegmentReservation(ctx context.Context, req *segment.SetupR
 		return res, nil
 	}
 
-	logger.Debug("segment admission", "id", req.ID, "src_ia", req.Path.SrcIA(),
-		"dst_ia", req.Path.DstIA(), "path", req.Path)
+	logger.Debug("segment admission", "id", req.ID, "path", req.PathAtSource)
 	if err := req.Validate(); err != nil {
 		failedResponse.Message = s.errWrapStr("request failed validation", err).Error()
 		return updateResponse(failedResponse)
@@ -1386,7 +1394,7 @@ func (s *Store) admitSegmentReservation(ctx context.Context, req *segment.SetupR
 		rsv.PathType = req.PathType
 		rsv.PathEndProps = req.PathProps
 		rsv.TrafficSplit = req.SplitCls
-		rsv.PathAtSource = req.Path // opaque for all AS but the source AS
+		rsv.PathAtSource = req.PathAtSource // opaque for all AS but the source AS
 		// we are going to extend a bit the information in the path of this reservation: if this
 		// AS is at the beginning of the path or at the end, we can annotate the opaque path with
 		// our IA id:
@@ -1445,7 +1453,7 @@ func (s *Store) admitSegmentReservation(ctx context.Context, req *segment.SetupR
 	}
 
 	// update token with new hop field
-	step := req.Path.Steps[currentStep]
+	step := req.PathAtSource.Steps[currentStep]
 	if err = s.computeMAC(rsv.ID.Suffix, &res.Token, req.ID.ASID, req.ID.ASID,
 		step.Ingress, step.Egress); err != nil {
 		failedResponse.Message = s.errWrapStr("cannot compute MAC", err).Error()
@@ -1466,7 +1474,7 @@ func (s *Store) admitSegmentReservation(ctx context.Context, req *segment.SetupR
 	}
 
 	if !req.IsFirstAS() {
-		err = s.authenticator.ComputeSegmentSetupResponseMAC(ctx, res, req.Path)
+		err = s.authenticator.ComputeSegmentSetupResponseMAC(ctx, res, req.PathAtSource)
 	}
 
 	return res, err
@@ -1476,11 +1484,11 @@ func (s *Store) getTokenFromDownstreamAdmission(ctx context.Context, req *segmen
 	segment.SegmentSetupResponse, error) {
 
 	// authenticate request for the destination AS
-	if err := s.authenticator.ComputeSegmentSetupRequestTransitMAC(ctx, req, req.Path.DstIA(), req.Path.CurrentStep); err != nil {
+	if err := s.authenticator.ComputeSegmentSetupRequestTransitMAC(ctx, req, req.PathAtSource.DstIA(), req.PathAtSource.CurrentStep); err != nil {
 		return nil, serrors.WrapStr("computing in transit seg. setup authenticator", err)
 	}
 
-	client, err := s.operator.ColibriClient(ctx, base.EgressFromDataPlanePath(rawPath), req.Path.RawPath)
+	client, err := s.operator.ColibriClient(ctx, base.EgressFromDataPlanePath(rawPath), req.PathAtSource.RawPath)
 	if err != nil {
 		log.Debug("error finding a colibri service client", "err", err)
 		return nil, serrors.WrapStr("while finding a colibri service client", err)
@@ -1515,12 +1523,12 @@ func (s *Store) sendUpstreamForAdmission(ctx context.Context, req *segment.Setup
 
 	if req.IsLastAS() {
 		req.ReverseTraveling = false
-		if err := req.Path.Reverse(); err != nil {
+		if err := req.PathAtSource.Reverse(); err != nil {
 			failedResponse.Message = "cannot reverse path at first node in reverse trip: " +
 				err.Error()
 			return failedResponse, err
 		}
-		err := s.authenticator.ComputeSegmentSetupRequestInitialMAC(ctx, req, req.Path.Steps)
+		err := s.authenticator.ComputeSegmentSetupRequestInitialMAC(ctx, req, req.PathAtSource.Steps)
 		if err != nil {
 			return nil, err
 		}
@@ -1528,7 +1536,7 @@ func (s *Store) sendUpstreamForAdmission(ctx context.Context, req *segment.Setup
 		return s.admitSegmentReservation(ctx, req, currentStep, rawPath)
 	}
 	// forward to next colibri service upstream
-	client, err := s.operator.ColibriClient(ctx, req.Path.GetCurrentStep().Egress, req.Path.RawPath)
+	client, err := s.operator.ColibriClient(ctx, req.Egress(), rawPath)
 	if err != nil {
 		return failedResponse, s.errWrapStr("while finding a colibri service client", err)
 	}
@@ -1547,7 +1555,7 @@ func (s *Store) sendUpstreamForAdmission(ctx context.Context, req *segment.Setup
 	}
 	if !req.IsFirstAS() {
 		// create authenticators before passing the response to the previous node in the path
-		if err := s.authenticator.ComputeSegmentSetupResponseMAC(ctx, res, req.Path); err != nil {
+		if err := s.authenticator.ComputeSegmentSetupResponseMAC(ctx, res, req.PathAtSource); err != nil {
 			return failedResponse, s.errWrapStr("computing authenticators for response", err)
 		}
 	}
