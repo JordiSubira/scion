@@ -656,7 +656,11 @@ func upsertNewSegReservation(ctx context.Context, x db.Sqler, rsv *segment.Reser
 		return err
 	}
 
-	p := rsv.PathAtSource
+	//p := rsv.PathAtSource
+	p := &base.TransparentPath{
+		RawPath: rsv.RawPath,
+		Steps:   rsv.Steps,
+	}
 	const query = `INSERT INTO seg_reservation (id_as, id_suffix,
 		ingress, egress, path_type, path, end_props,
 		traffic_split, src_ia, dst_ia, active_index)
@@ -784,7 +788,9 @@ func buildSegRsvFromFields(ctx context.Context, x db.Sqler, fields *rsvFields) (
 	if err != nil {
 		return nil, err
 	}
-	rsv.PathAtSource = p
+	//rsv.PathAtSource = p
+	rsv.Steps = p.Steps
+	rsv.RawPath = p.RawPath
 	rsv.PathEndProps = reservation.PathEndProps(fields.EndProps)
 	rsv.TrafficSplit = reservation.SplitCls(fields.TrafficSplit)
 	rsv.Indices = indices

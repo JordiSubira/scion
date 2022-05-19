@@ -22,6 +22,7 @@ import (
 	"github.com/scionproto/scion/go/lib/addr"
 	"github.com/scionproto/scion/go/lib/colibri/reservation"
 	"github.com/scionproto/scion/go/lib/serrors"
+	slayerspath "github.com/scionproto/scion/go/lib/slayers/path"
 	colpath "github.com/scionproto/scion/go/lib/slayers/path/colibri"
 )
 
@@ -35,7 +36,9 @@ type Reservation struct {
 	PathType     reservation.PathType     // the type of path (up,core,down)
 	PathEndProps reservation.PathEndProps // the properties for stitching and start/end
 	TrafficSplit reservation.SplitCls     // the traffic split between control and data planes
-	PathAtSource *base.TransparentPath    // when this reservation object is at its source
+	// PathAtSource *base.TransparentPath    // when this reservation object is at its source
+	Steps   base.PathSteps
+	RawPath slayerspath.Path
 }
 
 func NewReservation(asid addr.AS) *Reservation {
@@ -107,15 +110,11 @@ func (r *Reservation) Validate() error {
 			activeIndex = i
 		}
 	}
-	if (r.Ingress == 0) != (r.PathAtSource != nil && r.PathAtSource.CurrentStep == 0) {
-		return serrors.New("reservation path and ingress ID non consistent", "ingress", r.Ingress,
-			"path", r.PathAtSource.String())
-	}
 	err := r.PathEndProps.Validate()
 	if err != nil {
 		return serrors.WrapStr("validating reservation, end properties failed", err)
 	}
-	return r.PathAtSource.Validate()
+	return nil
 }
 
 // ActiveIndex returns the currently active Index for this reservation, or nil if none.

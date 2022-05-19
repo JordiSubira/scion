@@ -114,11 +114,11 @@ func (m *manager) Run(ctx context.Context) {
 			table = append(table, fmt.Sprintf("%24s %4s %15s %15s %8d %11s %s",
 				r.ID.String(),
 				r.PathType,
-				r.PathAtSource.SrcIA(),
-				r.PathAtSource.DstIA(),
+				r.Steps.SrcIA(),
+				r.Steps.DstIA(),
 				len(r.Indices.Filter(segment.NotConfirmed())),
-				r.PathAtSource.RawPath.Type(),
-				r.PathAtSource.String()))
+				r.RawPath.Type(),
+				base.StepsToString(r.Steps)))
 		}
 		if len(rsvs) > 0 {
 			log.Debug("----------- colibri segments ------------\n" + strings.Join(table, "\n"))

@@ -448,3 +448,17 @@ func (p PathSteps) Reverse() PathSteps {
 	}
 	return rev
 }
+
+func (p PathSteps) Interfaces() []snet.PathInterface {
+	if p == nil {
+		return []snet.PathInterface{}
+	}
+	ifaces := make([]snet.PathInterface, len(p)*2) // it has two too many
+	for i := 0; i < len(p); i++ {
+		ifaces[i*2].ID = common.IFIDType(p[i].Ingress)
+		ifaces[i*2].IA = p[i].IA
+		ifaces[i*2+1].ID = common.IFIDType(p[i].Egress)
+		ifaces[i*2+1].IA = p[i].IA
+	}
+	return ifaces[1 : len(ifaces)-1]
+}

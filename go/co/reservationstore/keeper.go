@@ -219,9 +219,9 @@ func (k *keeper) activateIndices(ctx context.Context, rsvs []*segment.Reservatio
 			return serrors.New("request to activate, but no index suitable", "id", rsv.ID,
 				"indices", rsv.Indices.String())
 		}
-		reqs[i] = base.NewRequest(k.manager.Now(), &rsv.ID, index.Idx, rsv.PathAtSource.Copy().Steps)
-		steps[i] = rsv.PathAtSource.Copy().Steps
-		paths[i] = rsv.PathAtSource.Copy().RawPath
+		reqs[i] = base.NewRequest(k.manager.Now(), &rsv.ID, index.Idx, rsv.Steps.Copy())
+		steps[i] = rsv.Steps.Copy()
+		paths[i] = rsv.RawPath
 	}
 	errs := filterEmptyErrors(k.manager.ActivateManyRequest(ctx, reqs, steps, paths))
 	if len(errs) > 0 {
@@ -420,13 +420,13 @@ func (e *requirements) PrepareRenewalRequests(rsvs []*seg.Reservation, now, expT
 
 	requests := []*seg.SetupReq{}
 	for _, rsv := range rsvs {
-		if !e.predicate.EvalInterfaces(rsv.PathAtSource.Interfaces()) {
+		if !e.predicate.EvalInterfaces(rsv.Steps.Interfaces()) {
 			continue
 		}
 
 		req := &seg.SetupReq{
 			Request: *base.NewRequest(now, &rsv.ID, rsv.NextIndexToRenew(),
-				rsv.PathAtSource.Steps),
+				rsv.Steps),
 			ExpirationTime: expTime,
 			// RLC:            e.RLC,
 			PathType:    rsv.PathType,
@@ -435,8 +435,8 @@ func (e *requirements) PrepareRenewalRequests(rsvs []*seg.Reservation, now, expT
 			SplitCls:    rsv.TrafficSplit,
 			PathProps:   rsv.PathEndProps,
 			AllocTrail:  reservation.AllocationBeads{}, // at source
-			Steps:       rsv.PathAtSource.Steps,
-			RawPath:     rsv.PathAtSource.RawPath,
+			Steps:       rsv.Steps,
+			RawPath:     rsv.RawPath,
 			Reservation: rsv,
 		}
 		requests = append(requests, req)
@@ -462,7 +462,7 @@ func (e requirements) Compliance(rsv *seg.Reservation, atLeastUntil time.Time) C
 		return NeverCompliant
 	case rsv.PathEndProps != e.endProps:
 		return NeverCompliant
-	case !e.predicate.EvalInterfaces(rsv.PathAtSource.Interfaces()):
+	case !e.predicate.EvalInterfaces(rsv.Steps.Interfaces()):
 		return NeverCompliant
 	}
 	indices := rsv.Indices.Filter(
