@@ -219,9 +219,6 @@ func (s *Store) ListStitchableSegments(ctx context.Context, dst addr.IA) (
 // the request will have this very AS as source.
 func (s *Store) InitSegmentReservation(ctx context.Context, req *segment.SetupReq,
 	rawPath slayerspath.Path) error {
-	if req.IsLastAS() {
-		return s.errNew("cannot initiate a reservation with this AS only in the path")
-	}
 	if req.ID.IsEmpty() {
 		return serrors.New("bad empty ID")
 	}
@@ -291,7 +288,7 @@ func (s *Store) InitSegmentReservation(ctx context.Context, req *segment.SetupRe
 		rsv.TrafficSplit = req.SplitCls
 		rsv.PathAtSource = &base.TransparentPath{
 			Steps:       req.Steps,
-			CurrentStep: req.CurrentStep,
+			CurrentStep: 0,
 			RawPath:     rawPath,
 		}
 
@@ -428,7 +425,7 @@ func (s *Store) AdmitSegmentReservation(ctx context.Context, req *segment.SetupR
 		return s.sendUpstreamForAdmission(ctx, req, currentStep, rawPath)
 	}
 
-	if err := s.authenticateSegSetupReq(ctx, req); err != nil {
+	if err := s.authenticateSegSetupReq(ctx, req, currentStep); err != nil {
 		return nil, s.errWrapStr("error validating request", err, "id", req.ID.String())
 	}
 
@@ -1305,8 +1302,9 @@ func (s *Store) authenticateReq(ctx context.Context, remote addr.IA, req *base.R
 }
 
 // authenticateSegSetupReq checks that the authenticators are correct.
-func (s *Store) authenticateSegSetupReq(ctx context.Context, req *segment.SetupReq) error {
-	ok, err := s.authenticator.ValidateSegSetupRequest(ctx, req)
+func (s *Store) authenticateSegSetupReq(ctx context.Context, req *segment.SetupReq,
+	currentStep int) error {
+	ok, err := s.authenticator.ValidateSegSetupRequest(ctx, req, currentStep)
 	if err != nil {
 		return serrors.WrapStr("validating source authentication mac", err)
 	}
@@ -1450,7 +1448,7 @@ func (s *Store) admitSegmentReservation(ctx context.Context, req *segment.SetupR
 			Authenticators: make([][]byte, len(req.Authenticators)),
 		},
 	}
-	if req.IsLastAS() {
+	if currentStep >= len(req.Steps)-1 {
 		res.Token = *index.Token
 	} else {
 		// forward the request to the next COLIBRI service
@@ -1488,7 +1486,7 @@ func (s *Store) admitSegmentReservation(ctx context.Context, req *segment.SetupR
 		return updateResponse(failedResponse)
 	}
 
-	if !req.IsFirstAS() {
+	if !(currentStep == 0) {
 		err = s.authenticator.ComputeSegmentSetupResponseMAC(ctx, res, req.Steps, currentStep)
 	}
 
@@ -1536,14 +1534,14 @@ func (s *Store) sendUpstreamForAdmission(ctx context.Context, req *segment.Setup
 		FailedRequest: req,
 	}
 
-	if req.IsLastAS() {
+	if currentStep >= len(req.Steps)-1 {
 		req.ReverseTraveling = false
 		req.Steps = req.Steps.Reverse()
 		err := s.authenticator.ComputeSegmentSetupRequestInitialMAC(ctx, req, req.Steps)
 		if err != nil {
 			return nil, err
 		}
-		req.CurrentStep = 0
+		// req.CurrentStep = 0
 		revPath, err := rawPath.Reverse()
 		if err != nil {
 			return nil, serrors.WrapStr("reversing rawPath", err)
@@ -1568,7 +1566,7 @@ func (s *Store) sendUpstreamForAdmission(ctx context.Context, req *segment.Setup
 	if err != nil {
 		return nil, serrors.WrapStr("translating response", err)
 	}
-	if !req.IsFirstAS() {
+	if !(currentStep == 0) {
 		// create authenticators before passing the response to the previous node in the path
 		if err := s.authenticator.ComputeSegmentSetupResponseMAC(ctx, res, req.Steps, currentStep); err != nil {
 			return failedResponse, s.errWrapStr("computing authenticators for response", err)

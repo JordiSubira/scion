@@ -83,7 +83,7 @@ type macVerifier interface {
 	// created by the initial AS for this particular transit AS as, for the immutable parts of
 	// this request. If the request is now at the last AS, it also validates the request at
 	// the destination. Returns true if valid, false otherwise.
-	ValidateSegSetupRequest(ctx context.Context, req *segment.SetupReq) (bool, error)
+	ValidateSegSetupRequest(ctx context.Context, req *segment.SetupReq, currentStep int) (bool, error)
 	// Validates a basic E2E request while in a transit AS.
 	// The authenticators were created on the source host.
 	ValidateE2ERequest(ctx context.Context, req *e2e.Request) (bool, error)
@@ -136,7 +136,7 @@ func (a *DRKeyAuthenticator) ComputeSegmentSetupRequestInitialMAC(ctx context.Co
 func (a *DRKeyAuthenticator) ComputeRequestTransitMAC(ctx context.Context,
 	req *base.Request, dstIA addr.IA, currentStep int, steps base.PathSteps) error {
 
-	if currentStep == 0 || currentStep >= len(steps) {
+	if currentStep == 0 || currentStep >= len(steps)-1 {
 		return nil
 	}
 	payload := inputTransitSegRequest(req)
@@ -146,7 +146,7 @@ func (a *DRKeyAuthenticator) ComputeRequestTransitMAC(ctx context.Context,
 func (a *DRKeyAuthenticator) ComputeSegmentSetupRequestTransitMAC(ctx context.Context,
 	req *segment.SetupReq, dstIA addr.IA, currentStep int) error {
 
-	if req.IsFirstAS() || req.IsLastAS() {
+	if currentStep == 0 || currentStep >= len(req.Steps)-1 {
 		return nil
 	}
 	payload := inputTransitSegSetupRequest(req)
@@ -254,15 +254,15 @@ func (a *DRKeyAuthenticator) ValidateRequest(ctx context.Context, remote addr.IA
 }
 
 func (a *DRKeyAuthenticator) ValidateSegSetupRequest(ctx context.Context,
-	req *segment.SetupReq) (bool, error) {
+	req *segment.SetupReq, currentStep int) (bool, error) {
 
-	if req.IsFirstAS() {
+	if currentStep == 0 {
 		return true, nil
 	}
 	ok, err := a.validateSegmentPayloadInitialMAC(ctx, req.ID, req.Steps.SrcIA(),
-		req.Authenticators[req.CurrentStep-1], req.Timestamp,
+		req.Authenticators[currentStep-1], req.Timestamp,
 		inputInitialSegSetupRequest(req))
-	if err == nil && ok && req.IsLastAS() {
+	if err == nil && ok && currentStep >= len(req.Steps)-1 {
 		ok, err = a.validateSegmentSetupRequestAtDestination(ctx, req, req.Steps)
 	}
 	return ok, err

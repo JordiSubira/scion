@@ -91,6 +91,31 @@ func EgressFromDataPlanePath(path slayerspath.Path) uint16 {
 	}
 }
 
+func IngressFromDataPlanePath(path slayerspath.Path) uint16 {
+	switch v := path.(type) {
+	case *colibri.ColibriPathMinimal:
+		return v.CurrHopField.IngressId
+	case *colibri.ColibriPath:
+		curr := v.InfoField.CurrHF
+		return v.HopFields[curr].IngressId
+	case *scion.Raw:
+		inf, err := v.GetCurrentInfoField()
+		if err != nil {
+			panic(err)
+		}
+		hf, err := v.GetCurrentHopField()
+		if err != nil {
+			panic(err)
+		}
+		if inf.ConsDir {
+			return hf.ConsIngress
+		}
+		return hf.ConsEgress
+	default:
+		panic(fmt.Sprintf("Invalid path type %T!\n", v))
+	}
+}
+
 // TransparentPath is used in e.g. setup requests, where the IAs should not be visible.
 // They are visible now (as the TransparentPath name implies), but this should change in the future.
 type TransparentPath struct {
