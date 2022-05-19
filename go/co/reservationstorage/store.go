@@ -42,9 +42,9 @@ type Store interface {
 		base.Response, error)
 	TearDownSegmentReservation(ctx context.Context, srcIA addr.IA, req *base.Request, currentStep int, rawPath slayerspath.Path) (
 		base.Response, error)
-	AdmitE2EReservation(ctx context.Context, req *e2e.SetupReq) (
+	AdmitE2EReservation(ctx context.Context, req *e2e.SetupReq, rawPath slayerspath.Path) (
 		e2e.SetupResponse, error)
-	CleanupE2EReservation(ctx context.Context, req *e2e.Request) (
+	CleanupE2EReservation(ctx context.Context, req *e2e.Request, rawPath slayerspath.Path) (
 		base.Response, error)
 
 	// DeleteExpiredIndices returns the number of indices deleted, and the time for the

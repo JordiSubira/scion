@@ -30,7 +30,6 @@ type Request struct {
 	DstHost     net.IP
 	CurrentStep int
 	Steps       base.PathSteps
-	Path        *base.TransparentPath
 }
 
 func (r *Request) Len() int {

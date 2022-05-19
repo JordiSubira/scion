@@ -481,7 +481,7 @@ func (s *Store) ConfirmSegmentReservation(ctx context.Context, srcIA addr.IA, re
 			"auth_count", len(req.Authenticators), "path_len", len(rsv.PathAtSource.Steps))
 		return failedResponse, nil
 	}
-	if err := s.authenticateReq(ctx, srcIA, req, currentStep, rsv.PathAtSource); err != nil {
+	if err := s.authenticateReq(ctx, srcIA, req, currentStep, rsv.PathAtSource.Steps); err != nil {
 		err = serrors.Wrap(ErrAuthenticate, err)
 		if !(currentStep == 0) {
 			if err := s.authenticator.ComputeResponseMAC(ctx, failedResponse,
@@ -596,7 +596,7 @@ func (s *Store) ActivateSegmentReservation(ctx context.Context, srcIA addr.IA,
 			"auth_count", len(req.Authenticators), "path_len", len(rsv.PathAtSource.Steps))
 		return failedResponse, nil
 	}
-	if err := s.authenticateReq(ctx, srcIA, req, currentStep, rsv.PathAtSource); err != nil {
+	if err := s.authenticateReq(ctx, srcIA, req, currentStep, rsv.PathAtSource.Steps); err != nil {
 		err = serrors.Wrap(ErrAuthenticate, err)
 		if !(currentStep == 0) {
 			if err := s.authenticator.ComputeResponseMAC(ctx, failedResponse,
@@ -717,7 +717,7 @@ func (s *Store) CleanupSegmentReservation(ctx context.Context, srcIA addr.IA, re
 			"auth_count", len(req.Authenticators), "path_len", len(rsv.PathAtSource.Steps))
 		return failedResponse, nil
 	}
-	if err := s.authenticateReq(ctx, srcIA, req, currentStep, rsv.PathAtSource); err != nil {
+	if err := s.authenticateReq(ctx, srcIA, req, currentStep, rsv.PathAtSource.Steps); err != nil {
 		err = serrors.Wrap(ErrAuthenticate, err)
 		if !(currentStep == 0) {
 			if err := s.authenticator.ComputeResponseMAC(ctx, failedResponse,
@@ -831,7 +831,7 @@ func (s *Store) TearDownSegmentReservation(ctx context.Context, srcIA addr.IA, r
 			"auth_count", len(req.Authenticators), "path_len", len(rsv.PathAtSource.Steps))
 		return failedResponse, nil
 	}
-	if err := s.authenticateReq(ctx, srcIA, req, currentStep, rsv.PathAtSource); err != nil {
+	if err := s.authenticateReq(ctx, srcIA, req, currentStep, rsv.PathAtSource.Steps); err != nil {
 		err = serrors.Wrap(ErrAuthenticate, err)
 		if !(currentStep == 0) {
 			if err := s.authenticator.ComputeResponseMAC(ctx, failedResponse,
@@ -906,10 +906,10 @@ func (s *Store) TearDownSegmentReservation(ctx context.Context, srcIA addr.IA, r
 }
 
 // AdmitE2EReservation will attempt to admit an e2e reservation.
-func (s *Store) AdmitE2EReservation(ctx context.Context, req *e2e.SetupReq) (
+func (s *Store) AdmitE2EReservation(ctx context.Context, req *e2e.SetupReq, rawPath slayerspath.Path) (
 	e2e.SetupResponse, error) {
 
-	log.Debug("e2e admission request", "id", req.ID, "path", req.Path,
+	log.Debug("e2e admission request", "id", req.ID, "steps", req.Steps, "currentStep", req.CurrentStep,
 		"segments", reservation.IDs(req.SegmentRsvs), "curr_segment", req.CurrentSegmentRsvIndex)
 
 	if err := s.authenticateE2ESetupReq(ctx, req); err != nil {
@@ -917,7 +917,7 @@ func (s *Store) AdmitE2EReservation(ctx context.Context, req *e2e.SetupReq) (
 	}
 
 	failedResponse := &e2e.SetupResponseFailure{
-		FailedStep: uint8(req.Path.CurrentStep),
+		FailedStep: uint8(req.CurrentStep),
 		Message:    "cannot admit e2e reservation",
 	}
 
@@ -947,8 +947,12 @@ func (s *Store) AdmitE2EReservation(ctx context.Context, req *e2e.SetupReq) (
 	if newSetup {
 		rsv = &e2e.Reservation{
 
-			ID:                  req.ID,
-			Path:                req.Path.Copy(),
+			ID: req.ID,
+			Path: &base.TransparentPath{
+				CurrentStep: req.CurrentStep,
+				Steps:       req.Steps,
+				RawPath:     rawPath,
+			},
 			SegmentReservations: make([]*segment.Reservation, 0),
 		}
 		for _, id := range req.SegmentRsvs {
@@ -1057,9 +1061,9 @@ func (s *Store) AdmitE2EReservation(ctx context.Context, req *e2e.SetupReq) (
 			// check white/black (admission) list of endhost
 			admitted = false
 			res, err := tx.CheckAdmissionList(ctx, time.Now(), req.DstHost,
-				req.Path.SrcIA(), req.SrcHost.String())
+				req.Steps.SrcIA(), req.SrcHost.String())
 			log.Debug("checked admission list", "admit", res, "err", err,
-				"host", req.DstHost.String(), "src_ia", req.Path.SrcIA(), "src_host", req.SrcHost)
+				"host", req.DstHost.String(), "src_ia", req.Steps.SrcIA(), "src_host", req.SrcHost)
 			switch {
 			case err != nil:
 				notAdmittedMsg = fmt.Sprintf("error in admission list: %s", err)
@@ -1082,7 +1086,7 @@ func (s *Store) AdmitE2EReservation(ctx context.Context, req *e2e.SetupReq) (
 			}, nil
 		}
 		// all ASes in the path will create authenticators for the initiator end-host
-		res.Authenticators = make([][]byte, len(req.Path.Steps)) // same size as path
+		res.Authenticators = make([][]byte, len(req.Steps)) // same size as path
 		token = index.Token
 	} else { // this is not the last AS
 		if isTransfer {
@@ -1090,11 +1094,11 @@ func (s *Store) AdmitE2EReservation(ctx context.Context, req *e2e.SetupReq) (
 			req.CurrentSegmentRsvIndex++
 		}
 		// TODO(JordiSubira): To be changed by reservation steps
-		if err := s.authenticator.ComputeE2ESetupRequestTransitMAC(ctx, req, req.Path.DstIA(), req.Path.CurrentStep); err != nil {
+		if err := s.authenticator.ComputeE2ESetupRequestTransitMAC(ctx, req, req.Steps.DstIA(), req.CurrentStep); err != nil {
 			return nil, serrors.WrapStr("computing in transit e2e setup request authenticator", err)
 		}
 		// authenticate request for the destination AS
-		client, err := s.operator.ColibriClient(ctx, req.Path.GetCurrentStep().Egress, req.Path.RawPath)
+		client, err := s.operator.ColibriClient(ctx, req.Egress(), rawPath)
 		if err != nil {
 			return nil, serrors.WrapStr("while finding a colibri service client", err)
 		}
@@ -1128,7 +1132,7 @@ func (s *Store) AdmitE2EReservation(ctx context.Context, req *e2e.SetupReq) (
 	}
 	// here the request was admitted and returning back from the down stream admission
 
-	step := req.Path.Steps[req.Path.CurrentStep]
+	step := req.Steps[req.CurrentStep]
 	err = s.computeMAC(rsv.ID.Suffix, token, req.ID.ASID, req.ID.ASID, step.Ingress, step.Egress)
 	if err != nil {
 		failedResponse.Message = s.errWrapStr("cannot compute MAC", err).Error()
@@ -1148,8 +1152,8 @@ func (s *Store) AdmitE2EReservation(ctx context.Context, req *e2e.SetupReq) (
 	res.Token = token.ToRaw()
 
 	// create authenticators before passing the response to the previous node in the path
-	if err := s.authenticator.ComputeE2ESetupResponseMAC(ctx, res, req.Path,
-		addr.HostFromIP(req.SrcHost), &req.ID); err != nil {
+	if err := s.authenticator.ComputeE2ESetupResponseMAC(ctx, res, req.CurrentStep,
+		req.Steps.SrcIA(), addr.HostFromIP(req.SrcHost), &req.ID); err != nil {
 		return failedResponse, s.errWrapStr("computing authenticators for response", err)
 	}
 	// return the token upstream
@@ -1157,14 +1161,14 @@ func (s *Store) AdmitE2EReservation(ctx context.Context, req *e2e.SetupReq) (
 }
 
 // CleanupE2EReservation will remove an index from an e2e reservation.
-func (s *Store) CleanupE2EReservation(ctx context.Context, req *e2e.Request) (
+func (s *Store) CleanupE2EReservation(ctx context.Context, req *e2e.Request, rawPath slayerspath.Path) (
 	base.Response, error) {
 
 	if err := s.authenticateE2EReq(ctx, req); err != nil {
 		return nil, s.errWrapStr("error validating request", err, "id", req.ID.String())
 	}
 
-	log.Debug("e2e cleanup request", "id", req.ID, "path", req.Path)
+	log.Debug("e2e cleanup request", "id", req.ID, "steps", req.Steps, "currentStep", req.CurrentStep)
 	failedResponse := &base.ResponseFailure{
 		AuthenticatedResponse: base.AuthenticatedResponse{
 			Timestamp:      req.Timestamp,
@@ -1175,7 +1179,7 @@ func (s *Store) CleanupE2EReservation(ctx context.Context, req *e2e.Request) (
 	}
 	if !req.IsFirstAS() {
 		if err := s.authenticator.ComputeResponseMAC(ctx, failedResponse,
-			req.Path.SrcIA(), req.Path.CurrentStep); err != nil {
+			req.Steps.SrcIA(), req.CurrentStep); err != nil {
 			return nil, serrors.WrapStr("authenticating response", err)
 		}
 	}
@@ -1215,7 +1219,8 @@ func (s *Store) CleanupE2EReservation(ctx context.Context, req *e2e.Request) (
 			return failedResponse, s.errWrapStr("cannot commit transaction", err,
 				"id", req.ID.String())
 		}
-		log.Debug("e2e cleanup successful", "id", req.ID, "path", req.Path)
+		log.Debug("e2e cleanup successful", "id", req.ID, "steps", req.Steps,
+			"currentStep", req.CurrentStep)
 	}
 
 	if req.IsLastAS() {
@@ -1233,11 +1238,11 @@ func (s *Store) CleanupE2EReservation(ctx context.Context, req *e2e.Request) (
 	}
 	// authenticate the semi mutable parts of the request, to be validated at the destination
 	// TODO(JordiSubira): To be changed by reservation steps
-	if err := s.authenticator.ComputeE2ERequestTransitMAC(ctx, req, req.Steps.DstIA(), req.Path.CurrentStep); err != nil {
+	if err := s.authenticator.ComputeE2ERequestTransitMAC(ctx, req, req.Steps.DstIA(), req.CurrentStep); err != nil {
 		return nil, serrors.WrapStr("computing in transit e2e base request authenticator", err)
 	}
 	// forward to next colibri service
-	client, err := s.operator.ColibriClient(ctx, req.Egress(), req.Path.RawPath)
+	client, err := s.operator.ColibriClient(ctx, req.Egress(), rawPath)
 	if err != nil {
 		return failedResponse, s.errWrapStr("while finding a colibri service client", err)
 	}
@@ -1261,7 +1266,7 @@ func (s *Store) CleanupE2EReservation(ctx context.Context, req *e2e.Request) (
 	} else {
 		// create authenticators before passing the response to the previous node in the path
 		if err := s.authenticator.ComputeResponseMAC(ctx, res, req.Steps.SrcIA(),
-			req.Path.CurrentStep); err != nil {
+			req.CurrentStep); err != nil {
 			return failedResponse, s.errWrapStr("computing authenticators for response", err)
 		}
 	}
@@ -1283,11 +1288,12 @@ func (s *Store) DeleteExpiredIndices(ctx context.Context, now time.Time) (int, t
 }
 
 // authenticateReq checks that the authenticators are correct.
-func (s *Store) authenticateReq(ctx context.Context, remote addr.IA, req *base.Request, currentStep int, path *base.TransparentPath) error {
+func (s *Store) authenticateReq(ctx context.Context, remote addr.IA, req *base.Request,
+	currentStep int, steps base.PathSteps) error {
 	if currentStep == 0 {
 		return nil
 	}
-	ok, err := s.authenticator.ValidateRequest(ctx, remote, req, currentStep, path)
+	ok, err := s.authenticator.ValidateRequest(ctx, remote, req, currentStep, steps)
 	if err != nil {
 		return serrors.WrapStr("validating source authentication mac", err)
 	}
@@ -1448,7 +1454,7 @@ func (s *Store) admitSegmentReservation(ctx context.Context, req *segment.SetupR
 		res.Token = *index.Token
 	} else {
 		// forward the request to the next COLIBRI service
-		downstreamRes, err := s.getTokenFromDownstreamAdmission(ctx, req, rawPath)
+		downstreamRes, err := s.getTokenFromDownstreamAdmission(ctx, req, currentStep, rawPath)
 		if err != nil {
 			failedResponse.Message = s.err(err).Error()
 			return updateResponse(failedResponse)
@@ -1489,11 +1495,11 @@ func (s *Store) admitSegmentReservation(ctx context.Context, req *segment.SetupR
 	return res, err
 }
 
-func (s *Store) getTokenFromDownstreamAdmission(ctx context.Context, req *segment.SetupReq, rawPath slayerspath.Path) (
+func (s *Store) getTokenFromDownstreamAdmission(ctx context.Context, req *segment.SetupReq, currentStep int, rawPath slayerspath.Path) (
 	segment.SegmentSetupResponse, error) {
 
 	// authenticate request for the destination AS
-	if err := s.authenticator.ComputeSegmentSetupRequestTransitMAC(ctx, req, req.Steps.DstIA(), req.CurrentStep); err != nil {
+	if err := s.authenticator.ComputeSegmentSetupRequestTransitMAC(ctx, req, req.Steps.DstIA(), currentStep); err != nil {
 		return nil, serrors.WrapStr("computing in transit seg. setup authenticator", err)
 	}
 

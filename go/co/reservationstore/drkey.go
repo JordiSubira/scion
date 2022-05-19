@@ -66,10 +66,10 @@ type macComputer interface {
 		res base.Response, srcIA addr.IA, currentStep int) error
 	ComputeSegmentSetupResponseMAC(ctx context.Context,
 		res segment.SegmentSetupResponse, steps base.PathSteps, currentStep int) error
-	ComputeE2EResponseMAC(ctx context.Context, res base.Response, path *base.TransparentPath,
-		srcHost addr.HostAddr) error
+	ComputeE2EResponseMAC(ctx context.Context, res base.Response,
+		currentStep int, srcIA addr.IA, srcHost addr.HostAddr) error
 	ComputeE2ESetupResponseMAC(ctx context.Context, res e2e.SetupResponse,
-		path *base.TransparentPath, srcHost addr.HostAddr, rsvID *reservation.ID) error
+		pcurrentStep int, srcIA addr.IA, srcHost addr.HostAddr, rsvID *reservation.ID) error
 }
 
 type macVerifier interface {
@@ -78,7 +78,7 @@ type macVerifier interface {
 	// this request. If the request is now at the last AS, it also validates the request at
 	// the destination. Returns true if valid, false otherwise.
 	ValidateRequest(ctx context.Context, remote addr.IA,
-		req *base.Request, currentStep int, path *base.TransparentPath) (bool, error)
+		req *base.Request, currentStep int, steps base.PathSteps) (bool, error)
 	// ValidateSegSetupRequest verifies the validity of the source authentication
 	// created by the initial AS for this particular transit AS as, for the immutable parts of
 	// this request. If the request is now at the last AS, it also validates the request at
@@ -206,9 +206,9 @@ func (a *DRKeyAuthenticator) ComputeSegmentSetupResponseMAC(ctx context.Context,
 }
 
 func (a *DRKeyAuthenticator) ComputeE2EResponseMAC(ctx context.Context, res base.Response,
-	path *base.TransparentPath, srcHost addr.HostAddr) error {
+	currentStep int, srcIA addr.IA, srcHost addr.HostAddr) error {
 
-	key, err := a.fastAS2Host(ctx, path.SrcIA(), srcHost, res.GetTimestamp())
+	key, err := a.fastAS2Host(ctx, srcIA, srcHost, res.GetTimestamp())
 	if err != nil {
 		return err
 	}
@@ -219,18 +219,18 @@ func (a *DRKeyAuthenticator) ComputeE2EResponseMAC(ctx context.Context, res base
 	}
 	// because base.Response.SetAuthenticator will use step-1 for the auth position, but we
 	// actually want the [step] position, add one:
-	res.SetAuthenticator(path.CurrentStep+1, mac)
+	res.SetAuthenticator(currentStep+1, mac)
 	return nil
 }
 
 func (a *DRKeyAuthenticator) ComputeE2ESetupResponseMAC(ctx context.Context, res e2e.SetupResponse,
-	path *base.TransparentPath, srcHost addr.HostAddr, rsvID *reservation.ID) error {
+	currentStep int, srcIA addr.IA, srcHost addr.HostAddr, rsvID *reservation.ID) error {
 
-	key, err := a.fastAS2Host(ctx, path.SrcIA(), srcHost, res.GetTimestamp())
+	key, err := a.fastAS2Host(ctx, srcIA, srcHost, res.GetTimestamp())
 	if err != nil {
 		return err
 	}
-	payload, err := res.ToRaw(path.CurrentStep, rsvID)
+	payload, err := res.ToRaw(currentStep, rsvID)
 	if err != nil {
 		return err
 	}
@@ -238,17 +238,17 @@ func (a *DRKeyAuthenticator) ComputeE2ESetupResponseMAC(ctx context.Context, res
 	if err != nil {
 		return err
 	}
-	res.SetAuthenticator(path.CurrentStep, mac)
+	res.SetAuthenticator(currentStep, mac)
 	return nil
 }
 
 func (a *DRKeyAuthenticator) ValidateRequest(ctx context.Context, remote addr.IA,
-	req *base.Request, currentStep int, path *base.TransparentPath) (bool, error) {
+	req *base.Request, currentStep int, steps base.PathSteps) (bool, error) {
 
 	ok, err := a.validateSegmentPayloadInitialMAC(ctx, req.ID, remote,
 		req.Authenticators[currentStep-1], req.Timestamp, inputInitialBaseRequest(req))
-	if err == nil && ok && currentStep >= len(path.Steps)-1 {
-		ok, err = a.validateRequestAtDestination(ctx, req, path.Steps)
+	if err == nil && ok && currentStep >= len(steps)-1 {
+		ok, err = a.validateRequestAtDestination(ctx, req, steps)
 	}
 	return ok, err
 }
@@ -279,7 +279,7 @@ func (a *DRKeyAuthenticator) ValidateE2ERequest(ctx context.Context, req *e2e.Re
 
 	ok, err := a.validateE2EPayloadInitialMAC(ctx, req, payload)
 	if err == nil && ok && req.IsLastAS() {
-		ok, err = a.validateE2ERequestAtDestination(ctx, req, req.Path.Steps)
+		ok, err = a.validateE2ERequestAtDestination(ctx, req, req.Steps)
 	}
 
 	return ok, err
@@ -296,7 +296,7 @@ func (a *DRKeyAuthenticator) ValidateE2ESetupRequest(ctx context.Context,
 
 	ok, err := a.validateE2EPayloadInitialMAC(ctx, &req.Request, payload)
 	if err == nil && ok && req.IsLastAS() {
-		ok, err = a.validateE2ESetupRequestAtDestination(ctx, req, req.Path.Steps)
+		ok, err = a.validateE2ESetupRequestAtDestination(ctx, req, req.Steps)
 	}
 	return ok, err
 
@@ -407,10 +407,10 @@ func (a *DRKeyAuthenticator) validateSegmentPayloadInitialMAC(ctx context.Contex
 func (a *DRKeyAuthenticator) validateE2EPayloadInitialMAC(ctx context.Context,
 	req *e2e.Request, immutableInput []byte) (bool, error) {
 
-	key, err := a.fastAS2Host(ctx, req.Path.SrcIA(), addr.HostFromIP(req.SrcHost), req.Timestamp)
+	key, err := a.fastAS2Host(ctx, req.Steps.SrcIA(), addr.HostFromIP(req.SrcHost), req.Timestamp)
 	if err != nil {
 		return false, serrors.WrapStr("obtaining drkey", err, "fast", a.localIA,
-			"slow_ia", req.Path.SrcIA(), "slow_host", req.SrcHost)
+			"slow_ia", req.Steps.SrcIA(), "slow_host", req.SrcHost)
 	}
 	mac, err := MAC(immutableInput, key.Key)
 	if err != nil {
@@ -420,7 +420,7 @@ func (a *DRKeyAuthenticator) validateE2EPayloadInitialMAC(ctx context.Context,
 	if res != 1 {
 		log.FromCtx(ctx).Info("source authentication failed", "id", req.ID,
 			"fast_side", a.localIA,
-			"slow_ia", req.Path.SrcIA(), "slow_host", req.SrcHost,
+			"slow_ia", req.Steps.SrcIA(), "slow_host", req.SrcHost,
 			"mac", hex.EncodeToString(mac),
 			"expected", hex.EncodeToString(req.CurrentValidatorField()))
 		return false, nil

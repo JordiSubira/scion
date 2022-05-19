@@ -40,10 +40,10 @@ type SetupReq struct {
 	AllocTrail       reservation.AllocationBeads
 	ReverseTraveling bool         // a down rsv traveling to the core to be re-requested
 	Reservation      *Reservation // nil if no reservation yet
-	// PathAtSource     *base.TransparentPath // requested path (maybe different than transport)
-	Steps       base.PathSteps   //retrieved from pb request
-	CurrentStep int              //recovered from dataplane
-	RawPath     slayerspath.Path // only set in the srcAS
+
+	Steps       base.PathSteps   // retrieved from pb request (except at source)
+	CurrentStep int              // recovered from dataplane (except at source)
+	RawPath     slayerspath.Path // recovered from dataplane (except at source)
 }
 
 func (r *SetupReq) Validate() error {

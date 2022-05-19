@@ -87,7 +87,7 @@ func TestE2EBaseReqInitialMac(t *testing.T) {
 				localIA:   authIA,
 				fastKeyer: fakeFastKeyer{localIA: authIA},
 			}
-			tc.transitReq.Path.CurrentStep = 1 // second AS, first transit AS
+			tc.transitReq.CurrentStep = 1 // second AS, first transit AS
 			ok, err := auth.ValidateE2ERequest(ctx, &tc.transitReq)
 			require.NoError(t, err)
 			require.True(t, ok)
@@ -158,7 +158,7 @@ func TestE2ESetupReqInitialMac(t *testing.T) {
 				localIA:   authIA,
 				fastKeyer: fakeFastKeyer{localIA: authIA},
 			}
-			tc.transitReq.Path.CurrentStep = 1 // second AS, first transit AS
+			tc.transitReq.CurrentStep = 1 // second AS, first transit AS
 			ok, err := auth.ValidateE2ESetupRequest(ctx, &tc.transitReq)
 			require.NoError(t, err)
 			require.True(t, ok)
@@ -188,25 +188,25 @@ func TestE2ERequestTransitMac(t *testing.T) {
 			defer cancelF()
 
 			// at the transit ASes:
-			for step := 1; step < len(tc.transitReq.Path.Steps); step++ {
-				tc.transitReq.Path.CurrentStep = step
-				authIA := tc.transitReq.Path.Steps[step].IA
+			for step := 1; step < len(tc.transitReq.Steps); step++ {
+				tc.transitReq.CurrentStep = step
+				authIA := tc.transitReq.Steps[step].IA
 				auth := DRKeyAuthenticator{
 					localIA:   authIA,
 					fastKeyer: fakeFastKeyer{localIA: authIA},
 				}
-				err := auth.ComputeE2ERequestTransitMAC(ctx, &tc.transitReq, tc.transitReq.Path.DstIA(), tc.transitReq.Path.CurrentStep)
+				err := auth.ComputeE2ERequestTransitMAC(ctx, &tc.transitReq, tc.transitReq.Steps.DstIA(), tc.transitReq.CurrentStep)
 				require.NoError(t, err)
 			}
 
 			// at the destination AS:
-			tc.transitReq.Path.CurrentStep = len(tc.transitReq.Path.Steps) - 1
-			dstIA := tc.transitReq.Path.DstIA()
+			tc.transitReq.CurrentStep = len(tc.transitReq.Steps) - 1
+			dstIA := tc.transitReq.Steps.DstIA()
 			auth := DRKeyAuthenticator{
 				localIA:   dstIA,
 				slowKeyer: fakeSlowKeyer{localIA: dstIA},
 			}
-			ok, err := auth.validateE2ERequestAtDestination(ctx, &tc.transitReq, tc.transitReq.Path.Steps)
+			ok, err := auth.validateE2ERequestAtDestination(ctx, &tc.transitReq, tc.transitReq.Steps)
 			require.NoError(t, err)
 			require.True(t, ok)
 		})
@@ -243,29 +243,29 @@ func TestE2ESetupRequestTransitMac(t *testing.T) {
 			defer cancelF()
 
 			// at the transit ASes:
-			for step := 0; step < len(tc.transitReq.Path.Steps); step++ {
+			for step := 0; step < len(tc.transitReq.Steps); step++ {
 				tc.transitReq.AllocationTrail = append(tc.transitReq.AllocationTrail, 11)
 				if step == 0 {
 					continue
 				}
-				tc.transitReq.Path.CurrentStep = step
-				authIA := tc.transitReq.Path.Steps[step].IA
+				tc.transitReq.CurrentStep = step
+				authIA := tc.transitReq.Steps[step].IA
 				auth := DRKeyAuthenticator{
 					localIA:   authIA,
 					fastKeyer: fakeFastKeyer{localIA: authIA},
 				}
-				err := auth.ComputeE2ESetupRequestTransitMAC(ctx, &tc.transitReq, tc.transitReq.Path.DstIA(), tc.transitReq.Path.CurrentStep)
+				err := auth.ComputeE2ESetupRequestTransitMAC(ctx, &tc.transitReq, tc.transitReq.Steps.DstIA(), tc.transitReq.CurrentStep)
 				require.NoError(t, err)
 			}
 
 			// at the destination AS:
-			tc.transitReq.Path.CurrentStep = len(tc.transitReq.Path.Steps) - 1
-			dstIA := tc.transitReq.Path.DstIA()
+			tc.transitReq.CurrentStep = len(tc.transitReq.Steps) - 1
+			dstIA := tc.transitReq.Steps.DstIA()
 			auth := DRKeyAuthenticator{
 				localIA:   dstIA,
 				slowKeyer: fakeSlowKeyer{localIA: dstIA},
 			}
-			ok, err := auth.validateE2ESetupRequestAtDestination(ctx, &tc.transitReq, tc.transitReq.Path.Steps)
+			ok, err := auth.validateE2ESetupRequestAtDestination(ctx, &tc.transitReq, tc.transitReq.Steps)
 			require.NoError(t, err)
 			require.True(t, ok)
 		})
@@ -472,8 +472,8 @@ func TestComputeAndValidateE2EResponseError(t *testing.T) {
 					}
 				}
 
-				err := auth.ComputeE2EResponseMAC(ctx, tc.response, tc.path,
-					addr.HostFromIP(tc.srcHost))
+				err := auth.ComputeE2EResponseMAC(ctx, tc.response, tc.path.CurrentStep,
+					tc.path.SrcIA(), addr.HostFromIP(tc.srcHost))
 				require.NoError(t, err)
 			}
 
@@ -590,8 +590,8 @@ func TestComputeAndValidateE2ESetupResponse(t *testing.T) {
 					localIA:   step.IA,
 					fastKeyer: fakeFastKeyer{localIA: step.IA},
 				}
-				err := auth.ComputeE2ESetupResponseMAC(ctx, tc.response, tc.path,
-					addr.HostFromIP(tc.srcHost), tc.rsvID)
+				err := auth.ComputeE2ESetupResponseMAC(ctx, tc.response, tc.path.CurrentStep,
+					tc.path.SrcIA(), addr.HostFromIP(tc.srcHost), tc.rsvID)
 				require.NoError(t, err)
 			}
 

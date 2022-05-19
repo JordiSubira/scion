@@ -78,7 +78,7 @@ func (s *ColibriService) ConfirmSegmentIndex(ctx context.Context,
 		log.Error("setup segment", "err", err)
 		return nil, err
 	}
-	req, err := translate.Request(msg.Base, path)
+	req, err := translate.Request(msg.Base)
 	if err != nil {
 		log.Error("error unmarshalling", "err", err)
 		return nil, err
@@ -104,7 +104,7 @@ func (s *ColibriService) ActivateSegmentIndex(ctx context.Context,
 		log.Error("setup segment", "err", err)
 		return nil, err
 	}
-	req, err := translate.Request(msg.Base, path)
+	req, err := translate.Request(msg.Base)
 	if err != nil {
 		log.Error("error unmarshalling", "err", err)
 		return nil, err
@@ -130,7 +130,7 @@ func (s *ColibriService) TeardownSegment(ctx context.Context, msg *colpb.Teardow
 		log.Error("setup segment", "err", err)
 		return nil, err
 	}
-	req, err := translate.Request(msg.Base, path)
+	req, err := translate.Request(msg.Base)
 	if err != nil {
 		log.Error("error unmarshalling", "err", err)
 		return nil, err
@@ -156,7 +156,7 @@ func (s *ColibriService) CleanupSegmentIndex(ctx context.Context,
 		log.Error("setup segment", "err", err)
 		return nil, err
 	}
-	req, err := translate.Request(msg.Base, path)
+	req, err := translate.Request(msg.Base)
 	if err != nil {
 		log.Error("error unmarshalling", "err", err)
 		return nil, err
@@ -197,7 +197,7 @@ func (s *ColibriService) E2ESetup(ctx context.Context, msg *colpb.E2ESetupReques
 		log.Error("translating e2e setup", "err", err)
 		return nil, serrors.WrapStr("translating e2e setup", err)
 	}
-	res, err := s.Store.AdmitE2EReservation(ctx, req)
+	res, err := s.Store.AdmitE2EReservation(ctx, req, empty.Path{})
 	if err != nil {
 		log.Error("admitting e2e", "err", err)
 		return nil, err
@@ -214,7 +214,7 @@ func (s *ColibriService) CleanupE2EIndex(ctx context.Context, msg *colpb.Cleanup
 		log.Error("error unmarshalling", "err", err)
 		return nil, err
 	}
-	res, err := s.Store.CleanupE2EReservation(ctx, req)
+	res, err := s.Store.CleanupE2EReservation(ctx, req, empty.Path{})
 	if err != nil {
 		log.Error("colibri store returned an error", "err", err)
 		return nil, err
@@ -284,7 +284,7 @@ func (s *ColibriService) SetupReservation(ctx context.Context, msg *colpb.SetupR
 		return nil, err
 	}
 
-	res, err := s.Store.AdmitE2EReservation(ctx, req)
+	res, err := s.Store.AdmitE2EReservation(ctx, req, empty.Path{})
 	if err != nil {
 		log.Error("colibri store setting up an e2e reservation", "err", err)
 		var trail []uint32
@@ -362,13 +362,10 @@ func (s *ColibriService) CleanupReservation(ctx context.Context,
 		DstHost:     msg.DstHost,
 		Steps:       translate.TransparentPathSteps(msg.Base.Steps),
 		CurrentStep: 0,
-		Path: &base.TransparentPath{
-			RawPath: empty.Path{},
-		},
 	}
 	req.Authenticators = msg.Base.Authenticators.Macs
 
-	res, err := s.Store.CleanupE2EReservation(ctx, req)
+	res, err := s.Store.CleanupE2EReservation(ctx, req, empty.Path{})
 	if err != nil {
 		var failedStep uint32
 		if failure, ok := res.(*base.ResponseFailure); ok {
