@@ -1544,25 +1544,15 @@ func (p *scionPacketProcessor) prepareSCMP(scmpH *slayers.SCMP, scmpP gopacket.S
 		return nil, serrors.Wrap(cannotRoute, err, "details", "serializing SCMP message")
 	}
 
-	var e2e slayers.EndToEndExtn
-	var optAuth slayers.PacketAuthenticatorOption
-	var key drkey.Key
 	if needsAuth {
+		var e2e slayers.EndToEndExtn
 		scionL.NextHdr = slayers.End2EndClass
-		spi, k, err := p.getSPAOInfo(scmpH)
-		key = k
+
+		optAuth, key, err := p.getSPAO(scmpH)
 		if err != nil {
 			return nil, err
 		}
-		timestamp, err := slayers.ComputeSPAOTimestamp(p.infoField.Timestamp)
-		if err != nil {
-			return nil, err
-		}
-		buf := make([]byte, 16)
-		// XXX(JordiSubira): Assume that send rate is low so that combination
-		// with timestamp is always unique
-		sn := uint32(0)
-		optAuth = slayers.NewPacketAuthenticatorOption(spi, slayers.PacketAuthCMAC, timestamp, sn, buf)
+
 		e2e.Options = []*slayers.EndToEndOption{optAuth.EndToEndOption}
 		e2e.NextHdr = slayers.L4SCMP
 		if err := slayers.ComputeAuthCMAC(key[:], &scionL, optAuth, p.buffer.Bytes(), optAuth.Authenticator()); err != nil {
@@ -1581,8 +1571,10 @@ func (p *scionPacketProcessor) prepareSCMP(scmpH *slayers.SCMP, scmpP gopacket.S
 	return p.buffer.Bytes(), scmpError{TypeCode: scmpH.TypeCode, Cause: cause}
 }
 
-func (p *scionPacketProcessor) getSPAOInfo(scmpH *slayers.SCMP) (slayers.PacketAuthSPI, drkey.Key, error) {
+func (p *scionPacketProcessor) getSPAO(scmpH *slayers.SCMP) (slayers.PacketAuthenticatorOption, drkey.Key, error) {
 	sv := (&drkey.Provider{}).GetSV()
+	now := time.Now()
+	macBuf := make([]byte, 16)
 	// XXX(JordiSubira): at the moment, for creating SCMP responses we use sender side.
 	// We assume the current epoch at the moment
 	dir := slayers.SenderSide
@@ -1595,22 +1587,34 @@ func (p *scionPacketProcessor) getSPAOInfo(scmpH *slayers.SCMP) (slayers.PacketA
 
 	spi, err := slayers.MakePacketAuthSPIDrkey(uint16(drkey.SCMP), drkeyType, dir, epoch)
 	if err != nil {
-		return slayers.PacketAuthSPI(0), drkey.Key{}, err
+		return slayers.PacketAuthenticatorOption{}, drkey.Key{}, err
 	}
+
+	timestamp, err := slayers.ComputeSPAOTimestamp(p.infoField.Timestamp)
+	if err != nil {
+		return slayers.PacketAuthenticatorOption{}, drkey.Key{}, err
+	}
+
+	// XXX(JordiSubira): Assume that send rate is low so that combination
+	// with timestamp is always unique
+	sn := uint32(0)
+
+	optAuth := slayers.NewPacketAuthenticatorOption(spi, slayers.PacketAuthCMAC, timestamp, sn, macBuf)
+
 	metaLvl1 := drkey.Lvl1Meta{
-		Validity: time.Now(),
+		Validity: now,
 		ProtoId:  drkey.SCMP,
 		SrcIA:    p.d.localIA,
 		DstIA:    p.scionLayer.SrcIA,
 	}
 	dstA, err := p.scionLayer.SrcAddr()
 	if err != nil {
-		return slayers.PacketAuthSPI(0),
+		return slayers.PacketAuthenticatorOption{},
 			drkey.Key{}, serrors.Wrap(cannotRoute, err, "details", "extracting src addr")
 	}
 	lvl1, err := p.drkey.DeriveLvl1(metaLvl1, sv)
 	if err != nil {
-		return slayers.PacketAuthSPI(0), drkey.Key{}, err
+		return slayers.PacketAuthenticatorOption{}, drkey.Key{}, err
 	}
 	if drkeyType == slayers.ASHost {
 
@@ -1619,9 +1623,9 @@ func (p *scionPacketProcessor) getSPAOInfo(scmpH *slayers.SCMP) (slayers.PacketA
 		}
 		key, err := p.drkey.DeriveASHost(metaASHost, lvl1)
 		if err != nil {
-			return slayers.PacketAuthSPI(0), drkey.Key{}, err
+			return slayers.PacketAuthenticatorOption{}, drkey.Key{}, err
 		}
-		return spi, key, nil
+		return optAuth, key, nil
 	}
 	localAddr := &net.IPAddr{IP: p.d.internalIP}
 	metaHostAS := drkey.HostASMeta{
@@ -1629,10 +1633,10 @@ func (p *scionPacketProcessor) getSPAOInfo(scmpH *slayers.SCMP) (slayers.PacketA
 	}
 	hostAS, err := p.drkey.DeriveHostAS(metaHostAS, lvl1)
 	if err != nil {
-		return slayers.PacketAuthSPI(0), drkey.Key{}, err
+		return slayers.PacketAuthenticatorOption{}, drkey.Key{}, err
 	}
 	key, err := p.drkey.DeriveHostToHost(dstA.String(), hostAS)
-	return spi, key, nil
+	return optAuth, key, nil
 }
 
 // decodeLayers implements roughly the functionality of
