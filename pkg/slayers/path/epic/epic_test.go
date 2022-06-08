@@ -19,6 +19,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	"github.com/scionproto/scion/pkg/slayers/path"
 	"github.com/scionproto/scion/pkg/slayers/path/epic"
 	"github.com/scionproto/scion/pkg/slayers/path/scion"
 )
@@ -148,7 +149,7 @@ func TestSerialize(t *testing.T) {
 		name, tc := name, tc
 		t.Run(name, func(t *testing.T) {
 			b := make([]byte, len(tc.Serialized))
-			err := tc.Path.SerializeTo(b)
+			err := tc.Path.SerializeTo(b, path.SeralizeMutable)
 			tc.errorFunc(t, err)
 			if err == nil {
 				assert.Equal(t, tc.Serialized, b)

@@ -68,7 +68,7 @@ func (inf *InfoField) DecodeFromBytes(raw []byte) error {
 
 // SerializeTo writes the fields into the provided buffer. The buffer must be of length >=
 // path.InfoLen.
-func (inf *InfoField) SerializeTo(b []byte) error {
+func (inf *InfoField) SerializeTo(b []byte, o SerializeOption) error {
 	if len(b) < InfoLen {
 		return serrors.New("buffer for InfoField too short", "expected", InfoLen,
 			"actual", len(b))
@@ -81,7 +81,9 @@ func (inf *InfoField) SerializeTo(b []byte) error {
 		b[0] |= 0x2
 	}
 	b[1] = 0 // reserved
-	binary.BigEndian.PutUint16(b[2:4], inf.SegID)
+	if o == SeralizeMutable {
+		binary.BigEndian.PutUint16(b[2:4], inf.SegID)
+	}
 	binary.BigEndian.PutUint32(b[4:8], inf.Timestamp)
 
 	return nil

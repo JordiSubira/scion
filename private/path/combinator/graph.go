@@ -666,7 +666,7 @@ func (s segmentList) ScionPath() snetpath.SCION {
 		HopFields:  hops,
 	}
 	raw := make([]byte, sp.Len())
-	if err := sp.SerializeTo(raw); err != nil {
+	if err := sp.SerializeTo(raw, path.SeralizeMutable); err != nil {
 		panic(err)
 	}
 	return snetpath.SCION{Raw: raw}

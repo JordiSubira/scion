@@ -138,11 +138,14 @@ func (m *MetaHdr) DecodeFromBytes(raw []byte) error {
 
 // SerializeTo writes the fields into the provided buffer. The buffer must be of length >=
 // scion.MetaLen.
-func (m *MetaHdr) SerializeTo(b []byte) error {
+func (m *MetaHdr) SerializeTo(b []byte, o path.SerializeOption) error {
 	if len(b) < MetaLen {
 		return serrors.New("buffer for MetaHdr too short", "expected", MetaLen, "actual", len(b))
 	}
-	line := uint32(m.CurrINF)<<30 | uint32(m.CurrHF&0x3F)<<24
+	line := uint32(0)
+	if o == path.SeralizeMutable {
+		line |= uint32(m.CurrINF)<<30 | uint32(m.CurrHF&0x3F)<<24
+	}
 	line |= uint32(m.SegLen[0]&0x3F) << 12
 	line |= uint32(m.SegLen[1]&0x3F) << 6
 	line |= uint32(m.SegLen[2] & 0x3F)

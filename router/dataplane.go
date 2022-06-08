@@ -34,6 +34,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 
 	"github.com/scionproto/scion/pkg/addr"
+	drkey "github.com/scionproto/scion/pkg/drkey/fake"
 	libepic "github.com/scionproto/scion/pkg/experimental/epic"
 	"github.com/scionproto/scion/pkg/log"
 	"github.com/scionproto/scion/pkg/private/serrors"
@@ -561,6 +562,7 @@ func newPacketProcessor(d *DataPlane, ingressID uint16) *scionPacketProcessor {
 			scionInput: make([]byte, path.MACBufferSize),
 			epicInput:  make([]byte, libepic.MACBufferSize),
 		},
+		drkey: drkey.NewDeriver(),
 	}
 	p.scionLayer.RecyclePaths()
 	return p
@@ -739,6 +741,8 @@ type scionPacketProcessor struct {
 	buffer gopacket.SerializeBuffer
 	// mac is the hasher for the MAC computation.
 	mac hash.Hash
+	// DRKey key derivation for SCMP authentication
+	drkey drkey.Deriver
 
 	// scionLayer is the SCION gopacket layer.
 	scionLayer slayers.SCION
@@ -1502,6 +1506,12 @@ func (p *scionPacketProcessor) prepareSCMP(scmpH *slayers.SCMP, scmpP gopacket.S
 		return nil, err
 	}
 
+	// TODO(JordiSubira): Authenticate SCMP message ONLY if needed
+	needsAuth := false
+	if cause != nil { // TODO(matzf): || hasValidAuth(p.e2eLayer)
+		needsAuth = true
+	}
+
 	sopts := gopacket.SerializeOptions{
 		ComputeChecksums: true,
 		FixLengths:       true,
@@ -1510,6 +1520,9 @@ func (p *scionPacketProcessor) prepareSCMP(scmpH *slayers.SCMP, scmpP gopacket.S
 	if cause != nil {
 		// add quote for errors.
 		hdrLen := slayers.CmnHdrLen + scionL.AddrHdrLen() + scionL.Path.Len()
+		if needsAuth {
+			hdrLen += 32 // 16 (e2e.option.Len()) + 16 (CMAC_tag.Len())
+		}
 		switch scmpH.TypeCode.Type() {
 		case slayers.SCMPTypeExternalInterfaceDown:
 			hdrLen += 20
@@ -1530,7 +1543,96 @@ func (p *scionPacketProcessor) prepareSCMP(scmpH *slayers.SCMP, scmpP gopacket.S
 	if err != nil {
 		return nil, serrors.Wrap(cannotRoute, err, "details", "serializing SCMP message")
 	}
+
+	var e2e slayers.EndToEndExtn
+	var optAuth slayers.PacketAuthenticatorOption
+	var key drkey.Key
+	if needsAuth {
+		scionL.NextHdr = slayers.End2EndClass
+		spi, k, err := p.getSPAOInfo(scmpH)
+		key = k
+		if err != nil {
+			return nil, err
+		}
+		timestamp, err := slayers.ComputeSPAOTimestamp(p.infoField.Timestamp)
+		if err != nil {
+			return nil, err
+		}
+		buf := make([]byte, 16)
+		// XXX(JordiSubira): Assume that send rate is low so that combination
+		// with timestamp is always unique
+		sn := uint32(0)
+		optAuth = slayers.NewPacketAuthenticatorOption(spi, slayers.PacketAuthCMAC, timestamp, sn, buf)
+		e2e.Options = []*slayers.EndToEndOption{optAuth.EndToEndOption}
+		e2e.NextHdr = slayers.L4SCMP
+		if err := slayers.ComputeAuthCMAC(key[:], &scionL, optAuth, p.buffer.Bytes(), optAuth.Authenticator()); err != nil {
+			return nil, serrors.Wrap(cannotRoute, err, "details", "computing CMAC")
+		}
+		if err := e2e.SerializeTo(p.buffer, sopts); err != nil {
+			return nil, serrors.Wrap(cannotRoute, err, "details", "serializing SCION E2E headers")
+		}
+	} else {
+		scionL.NextHdr = slayers.L4SCMP
+	}
+	if err := scionL.SerializeTo(p.buffer, sopts); err != nil {
+		return nil, serrors.Wrap(cannotRoute, err, "details", "serializing SCION header")
+	}
+
 	return p.buffer.Bytes(), scmpError{TypeCode: scmpH.TypeCode, Cause: cause}
+}
+
+func (p *scionPacketProcessor) getSPAOInfo(scmpH *slayers.SCMP) (slayers.PacketAuthSPI, drkey.Key, error) {
+	sv := (&drkey.Provider{}).GetSV()
+	// XXX(JordiSubira): at the moment, for creating SCMP responses we use sender side.
+	// We assume the current epoch at the moment
+	dir := slayers.SenderSide
+	epoch := slayers.Later
+	drkeyType := slayers.ASHost
+	if scmpH.TypeCode.Type() >= slayers.SCMPTypeEchoRequest &&
+		scmpH.TypeCode.Type() <= slayers.SCMPTypeTracerouteReply {
+		drkeyType = slayers.HostHost
+	}
+
+	spi, err := slayers.MakePacketAuthSPIDrkey(uint16(drkey.SCMP), drkeyType, dir, epoch)
+	if err != nil {
+		return slayers.PacketAuthSPI(0), drkey.Key{}, err
+	}
+	metaLvl1 := drkey.Lvl1Meta{
+		Validity: time.Now(),
+		ProtoId:  drkey.SCMP,
+		SrcIA:    p.d.localIA,
+		DstIA:    p.scionLayer.SrcIA,
+	}
+	dstA, err := p.scionLayer.SrcAddr()
+	if err != nil {
+		return slayers.PacketAuthSPI(0),
+			drkey.Key{}, serrors.Wrap(cannotRoute, err, "details", "extracting src addr")
+	}
+	lvl1, err := p.drkey.DeriveLvl1(metaLvl1, sv)
+	if err != nil {
+		return slayers.PacketAuthSPI(0), drkey.Key{}, err
+	}
+	if drkeyType == slayers.ASHost {
+
+		metaASHost := drkey.ASHostMeta{
+			DstHost: dstA.String(),
+		}
+		key, err := p.drkey.DeriveASHost(metaASHost, lvl1)
+		if err != nil {
+			return slayers.PacketAuthSPI(0), drkey.Key{}, err
+		}
+		return spi, key, nil
+	}
+	localAddr := &net.IPAddr{IP: p.d.internalIP}
+	metaHostAS := drkey.HostASMeta{
+		SrcHost: localAddr.String(),
+	}
+	hostAS, err := p.drkey.DeriveHostAS(metaHostAS, lvl1)
+	if err != nil {
+		return slayers.PacketAuthSPI(0), drkey.Key{}, err
+	}
+	key, err := p.drkey.DeriveHostToHost(dstA.String(), hostAS)
+	return spi, key, nil
 }
 
 // decodeLayers implements roughly the functionality of

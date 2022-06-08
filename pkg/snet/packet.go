@@ -390,7 +390,7 @@ func (p *Packet) Decode() error {
 	}
 	if l := scionLayer.Path.Len(); l != 0 {
 		rpath.Raw = make([]byte, l)
-		if err := scionLayer.Path.SerializeTo(rpath.Raw); err != nil {
+		if err := scionLayer.Path.SerializeTo(rpath.Raw, path.SeralizeMutable); err != nil {
 			return serrors.WrapStr("extracting path", err)
 		}
 	}

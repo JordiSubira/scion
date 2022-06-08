@@ -28,6 +28,11 @@ var (
 	strictDecoding  bool = true
 )
 
+const (
+	SeralizeMutable SerializeOption = iota
+	SeralizeImmutable
+)
+
 // Type indicates the type of the path contained in the SCION header.
 type Type uint8
 
@@ -39,10 +44,12 @@ func (t Type) String() string {
 	return fmt.Sprintf("%v (%d)", pm.Desc, t)
 }
 
+type SerializeOption uint8
+
 // Path is the path contained in the SCION header.
 type Path interface {
 	// SerializeTo serializes the path into the provided buffer.
-	SerializeTo(b []byte) error
+	SerializeTo(b []byte, o SerializeOption) error
 	// DecodesFromBytes decodes the path from the provided buffer.
 	DecodeFromBytes(b []byte) error
 	// Reverse reverses a path such that it can be used in the reversed direction.
@@ -114,7 +121,7 @@ type rawPath struct {
 	pathType Type
 }
 
-func (p *rawPath) SerializeTo(b []byte) error {
+func (p *rawPath) SerializeTo(b []byte, _ SerializeOption) error {
 	copy(b, p.raw)
 	return nil
 }

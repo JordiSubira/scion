@@ -17,6 +17,7 @@ package path
 import (
 	"github.com/scionproto/scion/pkg/private/serrors"
 	"github.com/scionproto/scion/pkg/slayers"
+	"github.com/scionproto/scion/pkg/slayers/path"
 	"github.com/scionproto/scion/pkg/slayers/path/scion"
 )
 
@@ -29,7 +30,7 @@ type SCION struct {
 // NewSCIONFromDecoded serializes the decoded SCION path into a dataplane path.
 func NewSCIONFromDecoded(d scion.Decoded) (SCION, error) {
 	buf := make([]byte, d.Len())
-	if err := d.SerializeTo(buf); err != nil {
+	if err := d.SerializeTo(buf, path.SeralizeMutable); err != nil {
 		return SCION{}, serrors.WrapStr("serializing decoded SCION path", err)
 	}
 	return SCION{Raw: buf}, nil

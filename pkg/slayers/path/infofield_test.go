@@ -30,7 +30,7 @@ func TestInfoSerializeDecode(t *testing.T) {
 		Timestamp: 0x100,
 	}
 	b := make([]byte, path.InfoLen)
-	assert.NoError(t, want.SerializeTo(b))
+	assert.NoError(t, want.SerializeTo(b, path.SeralizeMutable))
 
 	got := &path.InfoField{}
 	assert.NoError(t, got.DecodeFromBytes(b))

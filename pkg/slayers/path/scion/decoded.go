@@ -66,23 +66,23 @@ func (s *Decoded) DecodeFromBytes(data []byte) error {
 
 // SerializeTo writes the path to a slice. The slice must be big enough to hold the entire data,
 // otherwise an error is returned.
-func (s *Decoded) SerializeTo(b []byte) error {
+func (s *Decoded) SerializeTo(b []byte, o path.SerializeOption) error {
 	if len(b) < s.Len() {
 		return serrors.New("buffer too small to serialize path.", "expected", s.Len(),
 			"actual", len(b))
 	}
-	if err := s.PathMeta.SerializeTo(b[:MetaLen]); err != nil {
+	if err := s.PathMeta.SerializeTo(b[:MetaLen], o); err != nil {
 		return err
 	}
 	offset := MetaLen
 	for _, info := range s.InfoFields {
-		if err := info.SerializeTo(b[offset : offset+path.InfoLen]); err != nil {
+		if err := info.SerializeTo(b[offset:offset+path.InfoLen], o); err != nil {
 			return err
 		}
 		offset += path.InfoLen
 	}
 	for _, hop := range s.HopFields {
-		if err := hop.SerializeTo(b[offset : offset+path.HopLen]); err != nil {
+		if err := hop.SerializeTo(b[offset:offset+path.HopLen], o); err != nil {
 			return err
 		}
 		offset += path.HopLen
@@ -120,7 +120,7 @@ func (s *Decoded) Reverse() (path.Path, error) {
 // ToRaw tranforms scion.Decoded into scion.Raw.
 func (s *Decoded) ToRaw() (*Raw, error) {
 	b := make([]byte, s.Len())
-	if err := s.SerializeTo(b); err != nil {
+	if err := s.SerializeTo(b, path.SeralizeMutable); err != nil {
 		return nil, err
 	}
 	raw := &Raw{}

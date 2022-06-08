@@ -45,7 +45,7 @@ func (o Path) DecodeFromBytes(r []byte) error {
 	return nil
 }
 
-func (o Path) SerializeTo(b []byte) error {
+func (o Path) SerializeTo(b []byte, _ path.SerializeOption) error {
 	return nil
 }
 

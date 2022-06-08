@@ -40,7 +40,7 @@ var rawTestPath = &scion.Raw{
 
 func TestRawSerialize(t *testing.T) {
 	b := make([]byte, rawTestPath.Len())
-	assert.NoError(t, rawTestPath.SerializeTo(b))
+	assert.NoError(t, rawTestPath.SerializeTo(b, path.SeralizeMutable))
 	assert.Equal(t, rawPath, b)
 }
 
@@ -52,7 +52,7 @@ func TestRawDecodeFromBytes(t *testing.T) {
 
 func TestRawSerliazeDecode(t *testing.T) {
 	b := make([]byte, rawTestPath.Len())
-	assert.NoError(t, rawTestPath.SerializeTo(b))
+	assert.NoError(t, rawTestPath.SerializeTo(b, path.SeralizeMutable))
 	s := &scion.Raw{}
 	assert.NoError(t, s.DecodeFromBytes(b))
 	assert.Equal(t, rawTestPath, s)

@@ -143,7 +143,7 @@ var pathReverseCases = map[string]struct {
 
 func TestDecodedSerialize(t *testing.T) {
 	b := make([]byte, decodedTestPath.Len())
-	assert.NoError(t, decodedTestPath.SerializeTo(b))
+	assert.NoError(t, decodedTestPath.SerializeTo(b, path.SeralizeMutable))
 	assert.Equal(t, rawPath, b)
 }
 
@@ -155,7 +155,7 @@ func TestDecodedDecodeFromBytes(t *testing.T) {
 
 func TestDecodedSerializeDecode(t *testing.T) {
 	b := make([]byte, decodedTestPath.Len())
-	assert.NoError(t, decodedTestPath.SerializeTo(b))
+	assert.NoError(t, decodedTestPath.SerializeTo(b, path.SeralizeMutable))
 	s := &scion.Decoded{}
 	assert.NoError(t, s.DecodeFromBytes(b))
 	assert.Equal(t, decodedTestPath, s)

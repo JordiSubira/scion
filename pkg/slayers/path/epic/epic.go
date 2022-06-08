@@ -57,7 +57,7 @@ type Path struct {
 
 // SerializeTo serializes the Path into buffer b. On failure, an error is returned, otherwise
 // SerializeTo will return nil.
-func (p *Path) SerializeTo(b []byte) error {
+func (p *Path) SerializeTo(b []byte, o path.SerializeOption) error {
 	if len(b) < p.Len() {
 		return serrors.New("buffer too small to serialize path.", "expected", p.Len(),
 			"actual", len(b))
@@ -74,7 +74,7 @@ func (p *Path) SerializeTo(b []byte) error {
 	p.PktID.SerializeTo(b[:PktIDLen])
 	copy(b[PktIDLen:(PktIDLen+HVFLen)], p.PHVF)
 	copy(b[(PktIDLen+HVFLen):MetadataLen], p.LHVF)
-	return p.ScionPath.SerializeTo(b[MetadataLen:])
+	return p.ScionPath.SerializeTo(b[MetadataLen:], o)
 }
 
 // DecodeFromBytes deserializes the buffer b into the Path. On failure, an error is returned,

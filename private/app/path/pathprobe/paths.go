@@ -31,6 +31,7 @@ import (
 	"github.com/scionproto/scion/pkg/log"
 	"github.com/scionproto/scion/pkg/private/common"
 	"github.com/scionproto/scion/pkg/private/serrors"
+	slayerspath "github.com/scionproto/scion/pkg/slayers/path"
 	"github.com/scionproto/scion/pkg/slayers/path/scion"
 	"github.com/scionproto/scion/pkg/snet"
 	"github.com/scionproto/scion/pkg/snet/addrutil"
@@ -320,7 +321,7 @@ func (h *scmpHandler) Handle(pkt *snet.Packet) error {
 	scionReplyPath := snetpath.SCION{
 		Raw: make([]byte, rawReplyPath.Path.Len()),
 	}
-	if err := rawReplyPath.Path.SerializeTo(scionReplyPath.Raw); err != nil {
+	if err := rawReplyPath.Path.SerializeTo(scionReplyPath.Raw, slayerspath.SeralizeMutable); err != nil {
 		return serrors.WrapStr("serialization failed", err)
 	}
 	status, err := h.toStatus(pkt)

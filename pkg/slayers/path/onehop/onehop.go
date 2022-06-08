@@ -61,21 +61,27 @@ func (o *Path) DecodeFromBytes(data []byte) error {
 	return o.SecondHop.DecodeFromBytes(data[offset : offset+path.HopLen])
 }
 
-func (o *Path) SerializeTo(b []byte) error {
+func (o *Path) SerializeTo(b []byte, opt path.SerializeOption) error {
 	if len(b) < PathLen {
 		return serrors.New("buffer too short for OneHop path", "expected", PathLen, "actual",
 			len(b))
 	}
 	offset := 0
-	if err := o.Info.SerializeTo(b[:offset+path.InfoLen]); err != nil {
+	if err := o.Info.SerializeTo(b[:offset+path.InfoLen], path.SeralizeMutable); err != nil {
 		return err
 	}
 	offset += path.InfoLen
-	if err := o.FirstHop.SerializeTo(b[offset : offset+path.HopLen]); err != nil {
+	if err := o.FirstHop.SerializeTo(b[offset:offset+path.HopLen], opt); err != nil {
 		return err
 	}
 	offset += path.HopLen
-	return o.SecondHop.SerializeTo(b[offset : offset+path.HopLen])
+	if opt == path.SeralizeMutable {
+		if err := o.SecondHop.SerializeTo(b[offset:offset+path.HopLen], opt); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 // ToSCIONDecoded converts the one hop path in to a normal SCION path in the

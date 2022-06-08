@@ -85,16 +85,18 @@ func (h *HopField) DecodeFromBytes(raw []byte) error {
 
 // SerializeTo writes the fields into the provided buffer. The buffer must be of length >=
 // path.HopLen.
-func (h *HopField) SerializeTo(b []byte) error {
+func (h *HopField) SerializeTo(b []byte, o SerializeOption) error {
 	if len(b) < HopLen {
 		return serrors.New("buffer for HopField too short", "expected", MacLen, "actual", len(b))
 	}
 	b[0] = 0
-	if h.EgressRouterAlert {
-		b[0] |= 0x1
-	}
-	if h.IngressRouterAlert {
-		b[0] |= 0x2
+	if o == SeralizeMutable {
+		if h.EgressRouterAlert {
+			b[0] |= 0x1
+		}
+		if h.IngressRouterAlert {
+			b[0] |= 0x2
+		}
 	}
 	b[1] = h.ExpTime
 	binary.BigEndian.PutUint16(b[2:4], h.ConsIngress)

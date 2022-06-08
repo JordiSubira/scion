@@ -32,7 +32,7 @@ func TestHopSerializeDecode(t *testing.T) {
 		Mac:                [path.MacLen]byte{1, 2, 3, 4, 5, 6},
 	}
 	b := make([]byte, path.HopLen)
-	assert.NoError(t, want.SerializeTo(b))
+	assert.NoError(t, want.SerializeTo(b, path.SeralizeMutable))
 
 	got := &path.HopField{}
 	assert.NoError(t, got.DecodeFromBytes(b))

@@ -42,7 +42,7 @@ func (s *Raw) DecodeFromBytes(data []byte) error {
 
 // SerializeTo writes the path to a slice. The slice must be big enough to hold the entire data,
 // otherwise an error is returned.
-func (s *Raw) SerializeTo(b []byte) error {
+func (s *Raw) SerializeTo(b []byte, o path.SerializeOption) error {
 	if s.Raw == nil {
 		return serrors.New("raw is nil")
 	}
@@ -51,7 +51,7 @@ func (s *Raw) SerializeTo(b []byte) error {
 	}
 	// XXX(roosd): This modifies the underlying buffer. Consider writing to data
 	// directly.
-	if err := s.PathMeta.SerializeTo(s.Raw[:MetaLen]); err != nil {
+	if err := s.PathMeta.SerializeTo(s.Raw[:MetaLen], o); err != nil {
 		return err
 	}
 	copy(b, s.Raw)
@@ -72,7 +72,7 @@ func (s *Raw) Reverse() (path.Path, error) {
 	if err != nil {
 		return nil, err
 	}
-	if err := reversed.SerializeTo(s.Raw); err != nil {
+	if err := reversed.SerializeTo(s.Raw, path.SeralizeMutable); err != nil {
 		return nil, err
 	}
 	err = s.DecodeFromBytes(s.Raw)
@@ -82,7 +82,7 @@ func (s *Raw) Reverse() (path.Path, error) {
 // ToDecoded transforms a scion.Raw to a scion.Decoded.
 func (s *Raw) ToDecoded() (*Decoded, error) {
 	// Serialize PathMeta to ensure potential changes are reflected Raw.
-	if err := s.PathMeta.SerializeTo(s.Raw[:MetaLen]); err != nil {
+	if err := s.PathMeta.SerializeTo(s.Raw[:MetaLen], path.SeralizeMutable); err != nil {
 		return nil, err
 	}
 	decoded := &Decoded{}
@@ -97,7 +97,7 @@ func (s *Raw) IncPath() error {
 	if err := s.Base.IncPath(); err != nil {
 		return err
 	}
-	return s.PathMeta.SerializeTo(s.Raw[:MetaLen])
+	return s.PathMeta.SerializeTo(s.Raw[:MetaLen], path.SeralizeMutable)
 }
 
 // GetInfoField returns the InfoField at a given index.
@@ -126,7 +126,7 @@ func (s *Raw) SetInfoField(info path.InfoField, idx int) error {
 		return serrors.New("InfoField index out of bounds", "max", s.NumINF-1, "actual", idx)
 	}
 	infOffset := MetaLen + idx*path.InfoLen
-	return info.SerializeTo(s.Raw[infOffset : infOffset+path.InfoLen])
+	return info.SerializeTo(s.Raw[infOffset:infOffset+path.InfoLen], path.SeralizeMutable)
 }
 
 // GetHopField returns the HopField at a given index.
@@ -155,7 +155,7 @@ func (s *Raw) SetHopField(hop path.HopField, idx int) error {
 		return serrors.New("HopField index out of bounds", "max", s.NumHops-1, "actual", idx)
 	}
 	hopOffset := MetaLen + s.NumINF*path.InfoLen + idx*path.HopLen
-	return hop.SerializeTo(s.Raw[hopOffset : hopOffset+path.HopLen])
+	return hop.SerializeTo(s.Raw[hopOffset:hopOffset+path.HopLen], path.SeralizeMutable)
 }
 
 // IsPenultimateHop returns whether the current hop is the penultimate hop on the path.

@@ -199,7 +199,7 @@ func (s *SCION) SerializeTo(b gopacket.SerializeBuffer, opts gopacket.SerializeO
 	offset := CmnHdrLen + s.AddrHdrLen()
 
 	// Serialize path header.
-	return s.Path.SerializeTo(buf[offset:])
+	return s.Path.SerializeTo(buf[offset:], path.SeralizeMutable)
 }
 
 // DecodeFromBytes decodes the SCION layer. DecodeFromBytes resets the internal state of this layer

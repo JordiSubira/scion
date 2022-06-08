@@ -49,7 +49,7 @@ func TestSerializeDecode(t *testing.T) {
 		},
 	}
 	b := make([]byte, onehop.PathLen)
-	assert.NoError(t, want.SerializeTo(b))
+	assert.NoError(t, want.SerializeTo(b, path.SeralizeMutable))
 
 	got := onehop.Path{}
 	assert.NoError(t, got.DecodeFromBytes(b))
