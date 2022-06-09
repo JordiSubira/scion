@@ -1502,21 +1502,13 @@ func (p *scionPacketProcessor) prepareSCMP(scmpH *slayers.SCMP, scmpP gopacket.S
 
 	scmpH.SetNetworkLayerForChecksum(&scionL)
 
-	if err := p.buffer.Clear(); err != nil {
-		return nil, err
-	}
-
 	// TODO(JordiSubira): Authenticate SCMP message ONLY if needed
 	needsAuth := false
 	if cause != nil { // TODO(matzf): || hasValidAuth(p.e2eLayer)
 		needsAuth = true
 	}
 
-	sopts := gopacket.SerializeOptions{
-		ComputeChecksums: true,
-		FixLengths:       true,
-	}
-	scmpLayers := []gopacket.SerializableLayer{&scionL, scmpH, scmpP}
+	var quote []byte
 	if cause != nil {
 		// add quote for errors.
 		hdrLen := slayers.CmnHdrLen + scionL.AddrHdrLen() + scionL.Path.Len()
@@ -1531,15 +1523,24 @@ func (p *scionPacketProcessor) prepareSCMP(scmpH *slayers.SCMP, scmpP gopacket.S
 		default:
 			hdrLen += 8
 		}
-		quote := p.rawPkt
+		quote = p.rawPkt
 		maxQuoteLen := slayers.MaxSCMPPacketLen - hdrLen
 		if len(quote) > maxQuoteLen {
 			quote = quote[:maxQuoteLen]
 		}
-		scmpLayers = append(scmpLayers, gopacket.Payload(quote))
 	}
+
+	if err := p.buffer.Clear(); err != nil {
+		return nil, err
+	}
+	sopts := gopacket.SerializeOptions{
+		ComputeChecksums: true,
+		FixLengths:       true,
+	}
+	// First write the SCMP message only without the SCION header(s) to get a buffer that we
+	// can (re-)use as input in the MAC computation.
 	// XXX(matzf) could we use iovec gather to avoid copying quote?
-	err = gopacket.SerializeLayers(p.buffer, sopts, scmpLayers...)
+	err = gopacket.SerializeLayers(p.buffer, sopts, scmpH, scmpP, gopacket.Payload(quote))
 	if err != nil {
 		return nil, serrors.Wrap(cannotRoute, err, "details", "serializing SCMP message")
 	}
