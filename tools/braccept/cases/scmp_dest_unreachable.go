@@ -24,6 +24,7 @@ import (
 	"github.com/google/gopacket/layers"
 
 	"github.com/scionproto/scion/pkg/addr"
+	drkey "github.com/scionproto/scion/pkg/drkey/fake"
 	"github.com/scionproto/scion/pkg/private/util"
 	"github.com/scionproto/scion/pkg/private/xtest"
 	"github.com/scionproto/scion/pkg/slayers"
@@ -148,7 +149,23 @@ func SCMPDestinationUnreachable(artifactsDir string, mac hash.Hash) runner.Case 
 	if err := sp.IncPath(); err != nil {
 		panic(err)
 	}
-	scionL.NextHdr = slayers.L4SCMP
+	scionL.NextHdr = slayers.End2EndClass
+	spi, err := slayers.MakePacketAuthSPIDrkey(uint16(drkey.SCMP), slayers.ASHost, slayers.SenderSide, slayers.Later)
+	if err != nil {
+		panic(err)
+	}
+	e2e := &slayers.EndToEndExtn{
+		Options: []*slayers.EndToEndOption{
+			slayers.NewPacketAuthenticatorOption(
+				spi,
+				slayers.PacketAuthCMAC,
+				uint32(0),
+				uint32(0),
+				make([]byte, 16),
+			).EndToEndOption,
+		},
+	}
+	e2e.NextHdr = slayers.L4SCMP
 	scmpH := &slayers.SCMP{
 		TypeCode: slayers.CreateSCMPTypeCode(slayers.SCMPTypeDestinationUnreachable,
 			slayers.SCMPCodeNoRoute),
@@ -160,17 +177,18 @@ func SCMPDestinationUnreachable(artifactsDir string, mac hash.Hash) runner.Case 
 	quoteStart := 14 + 20 + 8
 	quote := input.Bytes()[quoteStart:]
 	if err := gopacket.SerializeLayers(want, options,
-		ethernet, ip, udp, scionL, scmpH, scmpP, gopacket.Payload(quote),
+		ethernet, ip, udp, scionL, e2e, scmpH, scmpP, gopacket.Payload(quote),
 	); err != nil {
 		panic(err)
 	}
 
 	return runner.Case{
-		Name:     "SCMPDestinationUnreachable",
-		WriteTo:  "veth_131_host",
-		ReadFrom: "veth_131_host",
-		Input:    input.Bytes(),
-		Want:     want.Bytes(),
-		StoreDir: filepath.Join(artifactsDir, "SCMPDestinationUnreachable"),
+		Name:            "SCMPDestinationUnreachable",
+		WriteTo:         "veth_131_host",
+		ReadFrom:        "veth_131_host",
+		Input:           input.Bytes(),
+		Want:            want.Bytes(),
+		StoreDir:        filepath.Join(artifactsDir, "SCMPDestinationUnreachable"),
+		NormalizePacket: scmpNormalizePacket,
 	}
 }
