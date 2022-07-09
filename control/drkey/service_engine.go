@@ -80,8 +80,6 @@ func NewServiceLevel1Cleaner(s ServiceEngine) *cleaner.Cleaner {
 	}, "drkey_serv_store")
 }
 
-type fromPrefetcher struct{}
-
 // serviceEngine keeps track of the level 1 drkey keys. It is backed by a drkey.DB
 type serviceEngine struct {
 	secretBackend  *secretValueBackend
