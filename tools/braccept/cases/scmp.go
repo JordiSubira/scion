@@ -39,7 +39,7 @@ func normalizePacketAuthOption(pkt gopacket.Packet) {
 	if err != nil {
 		return
 	}
-	optAuth, err := slayers.ParsePacketAuthenticatorOption(opt)
+	optAuth, err := slayers.ParsePacketAuthOption(opt)
 	if err != nil {
 		return
 	}

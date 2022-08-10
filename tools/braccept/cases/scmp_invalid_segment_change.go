@@ -174,13 +174,10 @@ func SCMPParentToParentXover(artifactsDir string, mac hash.Hash) runner.Case {
 	}
 
 	scionL.NextHdr = slayers.End2EndClass
-	spi, err := slayers.MakePacketAuthSPIDrkey(uint16(drkey.SCMP), slayers.ASHost, slayers.SenderSide, slayers.Later)
-	if err != nil {
-		panic(err)
-	}
+	spi := slayers.MakePacketAuthSPIDRKey(uint16(drkey.SCMP), slayers.PacketAuthASHost, slayers.PacketAuthSenderSide, slayers.PacketAuthLater)
 	e2e := &slayers.EndToEndExtn{
 		Options: []*slayers.EndToEndOption{
-			slayers.NewPacketAuthenticatorOption(
+			slayers.NewPacketAuthOption(
 				spi,
 				slayers.PacketAuthCMAC,
 				uint32(0),
@@ -363,13 +360,10 @@ func SCMPParentToChildXover(artifactsDir string, mac hash.Hash) runner.Case {
 	}
 
 	scionL.NextHdr = slayers.End2EndClass
-	spi, err := slayers.MakePacketAuthSPIDrkey(uint16(drkey.SCMP), slayers.ASHost, slayers.SenderSide, slayers.Later)
-	if err != nil {
-		panic(err)
-	}
+	spi := slayers.MakePacketAuthSPIDRKey(uint16(drkey.SCMP), slayers.PacketAuthASHost, slayers.PacketAuthSenderSide, slayers.PacketAuthLater)
 	e2e := &slayers.EndToEndExtn{
 		Options: []*slayers.EndToEndOption{
-			slayers.NewPacketAuthenticatorOption(
+			slayers.NewPacketAuthOption(
 				spi,
 				slayers.PacketAuthCMAC,
 				uint32(0),
@@ -556,13 +550,10 @@ func SCMPChildToParentXover(artifactsDir string, mac hash.Hash) runner.Case {
 	}
 
 	scionL.NextHdr = slayers.End2EndClass
-	spi, err := slayers.MakePacketAuthSPIDrkey(uint16(drkey.SCMP), slayers.ASHost, slayers.SenderSide, slayers.Later)
-	if err != nil {
-		panic(err)
-	}
+	spi := slayers.MakePacketAuthSPIDRKey(uint16(drkey.SCMP), slayers.PacketAuthASHost, slayers.PacketAuthSenderSide, slayers.PacketAuthLater)
 	e2e := &slayers.EndToEndExtn{
 		Options: []*slayers.EndToEndOption{
-			slayers.NewPacketAuthenticatorOption(
+			slayers.NewPacketAuthOption(
 				spi,
 				slayers.PacketAuthCMAC,
 				uint32(0),
@@ -745,13 +736,10 @@ func SCMPInternalXover(artifactsDir string, mac hash.Hash) runner.Case {
 	}
 
 	scionL.NextHdr = slayers.End2EndClass
-	spi, err := slayers.MakePacketAuthSPIDrkey(uint16(drkey.SCMP), slayers.ASHost, slayers.SenderSide, slayers.Later)
-	if err != nil {
-		panic(err)
-	}
+	spi := slayers.MakePacketAuthSPIDRKey(uint16(drkey.SCMP), slayers.PacketAuthASHost, slayers.PacketAuthSenderSide, slayers.PacketAuthLater)
 	e2e := &slayers.EndToEndExtn{
 		Options: []*slayers.EndToEndOption{
-			slayers.NewPacketAuthenticatorOption(
+			slayers.NewPacketAuthOption(
 				spi,
 				slayers.PacketAuthCMAC,
 				uint32(0),

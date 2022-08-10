@@ -272,13 +272,10 @@ func SCMPExpiredHopMessageBack(artifactsDir string, mac hash.Hash) runner.Case {
 		panic(err)
 	}
 	scionL.NextHdr = slayers.End2EndClass
-	spi, err := slayers.MakePacketAuthSPIDrkey(uint16(drkey.SCMP), slayers.ASHost, slayers.SenderSide, slayers.Later)
-	if err != nil {
-		panic(err)
-	}
+	spi := slayers.MakePacketAuthSPIDRKey(uint16(drkey.SCMP), slayers.PacketAuthASHost, slayers.PacketAuthSenderSide, slayers.PacketAuthLater)
 	e2e := &slayers.EndToEndExtn{
 		Options: []*slayers.EndToEndOption{
-			slayers.NewPacketAuthenticatorOption(
+			slayers.NewPacketAuthOption(
 				spi,
 				slayers.PacketAuthCMAC,
 				uint32(0),
@@ -588,13 +585,10 @@ func SCMPExpiredHopAfterXoverMessageBack(artifactsDir string, mac hash.Hash) run
 	}
 
 	scionL.NextHdr = slayers.End2EndClass
-	spi, err := slayers.MakePacketAuthSPIDrkey(uint16(drkey.SCMP), slayers.ASHost, slayers.SenderSide, slayers.Later)
-	if err != nil {
-		panic(err)
-	}
+	spi := slayers.MakePacketAuthSPIDRKey(uint16(drkey.SCMP), slayers.PacketAuthASHost, slayers.PacketAuthSenderSide, slayers.PacketAuthLater)
 	e2e := &slayers.EndToEndExtn{
 		Options: []*slayers.EndToEndOption{
-			slayers.NewPacketAuthenticatorOption(
+			slayers.NewPacketAuthOption(
 				spi,
 				slayers.PacketAuthCMAC,
 				uint32(0),
@@ -896,13 +890,10 @@ func SCMPExpiredHopAfterXoverConsDirMessageBack(artifactsDir string, mac hash.Ha
 	}
 
 	scionL.NextHdr = slayers.End2EndClass
-	spi, err := slayers.MakePacketAuthSPIDrkey(uint16(drkey.SCMP), slayers.ASHost, slayers.SenderSide, slayers.Later)
-	if err != nil {
-		panic(err)
-	}
+	spi := slayers.MakePacketAuthSPIDRKey(uint16(drkey.SCMP), slayers.PacketAuthASHost, slayers.PacketAuthSenderSide, slayers.PacketAuthLater)
 	e2e := &slayers.EndToEndExtn{
 		Options: []*slayers.EndToEndOption{
-			slayers.NewPacketAuthenticatorOption(
+			slayers.NewPacketAuthOption(
 				spi,
 				slayers.PacketAuthCMAC,
 				uint32(0),
@@ -1196,13 +1187,10 @@ func SCMPExpiredHopAfterXoverInternalMessageBack(artifactsDir string, mac hash.H
 	}
 
 	scionL.NextHdr = slayers.End2EndClass
-	spi, err := slayers.MakePacketAuthSPIDrkey(uint16(drkey.SCMP), slayers.ASHost, slayers.SenderSide, slayers.Later)
-	if err != nil {
-		panic(err)
-	}
+	spi := slayers.MakePacketAuthSPIDRKey(uint16(drkey.SCMP), slayers.PacketAuthASHost, slayers.PacketAuthSenderSide, slayers.PacketAuthLater)
 	e2e := &slayers.EndToEndExtn{
 		Options: []*slayers.EndToEndOption{
-			slayers.NewPacketAuthenticatorOption(
+			slayers.NewPacketAuthOption(
 				spi,
 				slayers.PacketAuthCMAC,
 				uint32(0),
@@ -1491,13 +1479,10 @@ func SCMPExpiredHopAfterXoverInternalConsDirMessageBack(artifactsDir string, mac
 	}
 
 	scionL.NextHdr = slayers.End2EndClass
-	spi, err := slayers.MakePacketAuthSPIDrkey(uint16(drkey.SCMP), slayers.ASHost, slayers.SenderSide, slayers.Later)
-	if err != nil {
-		panic(err)
-	}
+	spi := slayers.MakePacketAuthSPIDRKey(uint16(drkey.SCMP), slayers.PacketAuthASHost, slayers.PacketAuthSenderSide, slayers.PacketAuthLater)
 	e2e := &slayers.EndToEndExtn{
 		Options: []*slayers.EndToEndOption{
-			slayers.NewPacketAuthenticatorOption(
+			slayers.NewPacketAuthOption(
 				spi,
 				slayers.PacketAuthCMAC,
 				uint32(0),

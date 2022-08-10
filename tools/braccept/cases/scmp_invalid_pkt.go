@@ -153,13 +153,10 @@ func SCMPBadPktLen(artifactsDir string, mac hash.Hash) runner.Case {
 		panic(err)
 	}
 	scionL.NextHdr = slayers.End2EndClass
-	spi, err := slayers.MakePacketAuthSPIDrkey(uint16(drkey.SCMP), slayers.ASHost, slayers.SenderSide, slayers.Later)
-	if err != nil {
-		panic(err)
-	}
+	spi := slayers.MakePacketAuthSPIDRKey(uint16(drkey.SCMP), slayers.PacketAuthASHost, slayers.PacketAuthSenderSide, slayers.PacketAuthLater)
 	e2e := &slayers.EndToEndExtn{
 		Options: []*slayers.EndToEndOption{
-			slayers.NewPacketAuthenticatorOption(
+			slayers.NewPacketAuthOption(
 				spi,
 				slayers.PacketAuthCMAC,
 				uint32(0),
@@ -325,13 +322,10 @@ func SCMPQuoteCut(artifactsDir string, mac hash.Hash) runner.Case {
 		panic(err)
 	}
 	scionL.NextHdr = slayers.End2EndClass
-	spi, err := slayers.MakePacketAuthSPIDrkey(uint16(drkey.SCMP), slayers.ASHost, slayers.SenderSide, slayers.Later)
-	if err != nil {
-		panic(err)
-	}
+	spi := slayers.MakePacketAuthSPIDRKey(uint16(drkey.SCMP), slayers.PacketAuthASHost, slayers.PacketAuthSenderSide, slayers.PacketAuthLater)
 	e2e := &slayers.EndToEndExtn{
 		Options: []*slayers.EndToEndOption{
-			slayers.NewPacketAuthenticatorOption(
+			slayers.NewPacketAuthOption(
 				spi,
 				slayers.PacketAuthCMAC,
 				uint32(0),
@@ -445,13 +439,10 @@ func NoSCMPReplyForSCMPError(artifactsDir string, mac hash.Hash) runner.Case {
 	}
 
 	scionL.NextHdr = slayers.End2EndClass
-	spi, err := slayers.MakePacketAuthSPIDrkey(uint16(drkey.SCMP), slayers.ASHost, slayers.SenderSide, slayers.Later)
-	if err != nil {
-		panic(err)
-	}
+	spi := slayers.MakePacketAuthSPIDRKey(uint16(drkey.SCMP), slayers.PacketAuthASHost, slayers.PacketAuthSenderSide, slayers.PacketAuthLater)
 	e2e := &slayers.EndToEndExtn{
 		Options: []*slayers.EndToEndOption{
-			slayers.NewPacketAuthenticatorOption(
+			slayers.NewPacketAuthOption(
 				spi,
 				slayers.PacketAuthCMAC,
 				uint32(0),

@@ -667,7 +667,7 @@ func TestOptAuthenticatorDeserialize(t *testing.T) {
 	assert.Equal(t, optAuthMAC, auth.Authenticator(), "Authenticator data (MAC)")
 }
 
-func TestMakePacketAuthSPIDrkey(t *testing.T) {
+func TestMakePacketAuthSPIDRKey(t *testing.T) {
 	spi := slayers.MakePacketAuthSPIDRKey(
 		1,
 		slayers.PacketAuthASHost,
