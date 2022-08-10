@@ -16,8 +16,6 @@ package slayers
 
 import (
 	"crypto/aes"
-	"crypto/cipher"
-	"crypto/sha1"
 	"encoding/binary"
 	"fmt"
 	"hash"
@@ -699,62 +697,6 @@ func ComputeAuthCMAC(
 	return nil
 }
 
-func ComputeAuthCBCMAC(
-	key []byte,
-	scionL *SCION,
-	opt PacketAuthOption,
-	pld []byte,
-	mac []byte,
-) error {
-
-	// Hash input
-	// 8 (2.) + variable 4. (path) + variable (Upper layer payload)
-	inputLen := 8
-	inputLen += scionL.Path.Len()
-	inputLen += len(pld)
-	input := make([]byte, inputLen)
-	if err := serializeForHash(input, scionL, pld); err != nil {
-		return err
-	}
-	checksum := sha1.Sum(input)
-
-	// Input for tag function
-	// 12 (1.) +
-	// Address Type/Length fields (1 byte, padded to 4 bytes) +
-	// Address Header (3., 0-48 bytes) +
-	// hash ouput (20 bytes)
-	inputLen = 32
-	if !opt.SPI().IsDRKey() {
-		inputLen += 16
-	}
-	if !opt.SPI().IsDRKey() ||
-		(opt.SPI().Type() == PacketAuthASHost &&
-			opt.SPI().Direction() == PacketAuthReceiverSide) {
-		inputLen += (int(scionL.DstAddrLen) + 1) * LineLen
-	}
-	if !opt.SPI().IsDRKey() ||
-		(opt.SPI().Type() == PacketAuthASHost &&
-			opt.SPI().Direction() == PacketAuthSenderSide) {
-		inputLen += (int(scionL.SrcAddrLen) + 1) * LineLen
-	}
-	// We include the Address Type/Length fields are extracted from the third row
-	// of the Common Header, with the remaining fields zeroed out,
-	// if we skip both host addresses.
-	if inputLen > 32 {
-		inputLen += 4
-	}
-	input = make([]byte, inputLen)
-	if err := serializeForCBC(input, scionL, opt, pld, checksum[:]); err != nil {
-		return err
-	}
-	tag, err := initAESCBC(key)
-	if err != nil {
-		return nil
-	}
-	tag.CryptBlocks(mac, input)
-	return nil
-}
-
 func initCMAC(key []byte) (hash.Hash, error) {
 	block, err := aes.NewCipher(key)
 	if err != nil {
@@ -765,15 +707,6 @@ func initCMAC(key []byte) (hash.Hash, error) {
 		return nil, serrors.WrapStr("unable to initialize Mac", err)
 	}
 	return mac, nil
-}
-
-func initAESCBC(key []byte) (cipher.BlockMode, error) {
-	block, err := aes.NewCipher(key)
-	if err != nil {
-		return nil, serrors.New("Unable to initialize AES cipher")
-	}
-	mode := cipher.NewCBCEncrypter(block, ZeroBlock[:])
-	return mode, nil
 }
 
 func serializeAutenticatedData(buf []byte, s *SCION, opt PacketAuthOption, pld []byte) error {
@@ -819,64 +752,6 @@ func serializeAutenticatedData(buf []byte, s *SCION, opt PacketAuthOption, pld [
 		return err
 	}
 	offset += s.Path.Len()
-	copy(buf[offset:], pld)
-	return nil
-}
-
-func serializeForCBC(buf []byte, s *SCION, opt PacketAuthOption, pld, checksum []byte) error {
-	buf[0] = s.HdrLen
-	buf[1] = byte(L4SCMP)
-	binary.BigEndian.PutUint16(buf[2:], uint16(len(pld)))
-	buf[4] = byte(opt.Algorithm())
-	buf[5] = byte(opt.Timestamp() >> 16)
-	buf[6] = byte(opt.Timestamp() >> 8)
-	buf[7] = byte(opt.Timestamp())
-	buf[8] = byte(0)
-	buf[9] = byte(opt.SequenceNumber() >> 16)
-	buf[10] = byte(opt.SequenceNumber() >> 8)
-	buf[11] = byte(opt.SequenceNumber())
-	buf[12] = byte(0)
-	offset := 12
-	if !opt.SPI().IsDRKey() || opt.SPI().Type() != PacketAuthHostHost {
-		buf[offset] = byte(s.DstAddrType&0x3)<<6 | byte(s.DstAddrLen&0x3)<<4 |
-			byte(s.SrcAddrType&0x3)<<2 | byte(s.SrcAddrLen&0x3)
-		binary.BigEndian.PutUint16(buf[offset+1:], 0)
-		offset += 4
-	}
-	if !opt.SPI().IsDRKey() {
-		binary.BigEndian.PutUint64(buf[offset:], uint64(s.DstIA))
-		binary.BigEndian.PutUint64(buf[offset+8:], uint64(s.SrcIA))
-		offset += 16
-	}
-	if !opt.SPI().IsDRKey() ||
-		(opt.SPI().Type() == PacketAuthASHost &&
-			opt.SPI().Direction() == PacketAuthReceiverSide) {
-		addrLen := addrBytes(s.DstAddrLen)
-		copy(buf[offset:offset+addrLen], s.RawDstAddr)
-		offset += addrLen
-	}
-	if !opt.SPI().IsDRKey() ||
-		(opt.SPI().Type() == PacketAuthASHost &&
-			opt.SPI().Direction() == PacketAuthSenderSide) {
-		addrLen := addrBytes(s.SrcAddrLen)
-		copy(buf[offset:offset+addrLen], s.RawSrcAddr)
-		offset += addrLen
-	}
-	copy(buf[offset:], checksum)
-	return nil
-}
-
-func serializeForHash(buf []byte, s *SCION, pld []byte) error {
-	firstHdrLine := uint32(s.Version&0xF)<<28 | uint32(s.TrafficClass&0x3f)<<20 | s.FlowID&0xFFFFF
-	binary.BigEndian.PutUint32(buf[:], firstHdrLine)
-	buf[4] = byte(s.PathType)
-	buf[5] = byte(s.DstAddrType&0x3)<<6 | byte(s.DstAddrLen&0x3)<<4 |
-		byte(s.SrcAddrType&0x3)<<2 | byte(s.SrcAddrLen&0x3)
-	binary.BigEndian.PutUint16(buf[6:], 0)
-	if err := s.Path.SerializeTo(buf[8:], path.SeralizeImmutable); err != nil {
-		return err
-	}
-	offset := 8 + s.Path.Len()
 	copy(buf[offset:], pld)
 	return nil
 }
