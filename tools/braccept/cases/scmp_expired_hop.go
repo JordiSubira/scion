@@ -23,7 +23,7 @@ import (
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/layers"
 
-	drkey "github.com/scionproto/scion/pkg/drkey/fake"
+	"github.com/scionproto/scion/pkg/drkey"
 	"github.com/scionproto/scion/pkg/private/util"
 	"github.com/scionproto/scion/pkg/private/xtest"
 	"github.com/scionproto/scion/pkg/slayers"
@@ -143,8 +143,6 @@ func SCMPExpiredHop(artifactsDir string, mac hash.Hash) runner.Case {
 
 // SCMPExpiredHopMessageBack tests a packet with an expired hop field. The relative timestamp
 // can be encoded in the SPAO header and send back to the src.
-// TODO(JordiSubira): This case share most of the code with the previous one, we might
-// want to reuse code among those.
 func SCMPExpiredHopMessageBack(artifactsDir string, mac hash.Hash) runner.Case {
 	options := gopacket.SerializeOptions{
 		FixLengths:       true,
@@ -436,8 +434,6 @@ func SCMPExpiredHopAfterXover(artifactsDir string, mac hash.Hash) runner.Case {
 // SCMPExpiredHopAfterXoverMessageBack tests a packet with an expired hop field after an
 // x-over. The relative timestamp can be encoded
 // in the SPAO header and send back to the src.
-// TODO(JordiSubira): This case share most of the code with the previous one, we might
-// want to reuse code among those.
 func SCMPExpiredHopAfterXoverMessageBack(artifactsDir string, mac hash.Hash) runner.Case {
 	options := gopacket.SerializeOptions{
 		FixLengths:       true,
@@ -744,8 +740,6 @@ func SCMPExpiredHopAfterXoverConsDir(artifactsDir string, mac hash.Hash) runner.
 // SCMPExpiredHopAfterXoverConsDirMessageBack tests a packet with an expired hop field after an
 // x-over. The relative timestamp can be encoded
 // in the SPAO header and send back to the src.
-// TODO(JordiSubira): This case share most of the code with the previous one, we might
-// want to reuse code among those.
 func SCMPExpiredHopAfterXoverConsDirMessageBack(artifactsDir string, mac hash.Hash) runner.Case {
 	options := gopacket.SerializeOptions{
 		FixLengths:       true,
@@ -1048,8 +1042,6 @@ func SCMPExpiredHopAfterXoverInternal(artifactsDir string, mac hash.Hash) runner
 // field after an x-over received from an internal router. The expired path
 // segment is against construction direction. The relative timestamp can be encoded
 // in the SPAO header and send back to the src.
-// TODO(JordiSubira): This case share most of the code with the previous one, we might
-// want to reuse code among those.
 func SCMPExpiredHopAfterXoverInternalMessageBack(artifactsDir string, mac hash.Hash) runner.Case {
 	options := gopacket.SerializeOptions{
 		FixLengths:       true,
@@ -1343,8 +1335,6 @@ func SCMPExpiredHopAfterXoverInternalConsDir(artifactsDir string, mac hash.Hash)
 // segment is in construction direction. The expired path
 // segment is against construction direction. The relative timestamp can be encoded
 // in the SPAO header and send back to the src.
-// TODO(JordiSubira): This case share most of the code with the previous one, we might
-// want to reuse code among those.
 func SCMPExpiredHopAfterXoverInternalConsDirMessageBack(artifactsDir string, mac hash.Hash) runner.Case {
 	options := gopacket.SerializeOptions{
 		FixLengths:       true,

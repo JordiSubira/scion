@@ -34,7 +34,8 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 
 	"github.com/scionproto/scion/pkg/addr"
-	drkey "github.com/scionproto/scion/pkg/drkey/fake"
+	"github.com/scionproto/scion/pkg/drkey"
+	"github.com/scionproto/scion/pkg/drkey/specific"
 	libepic "github.com/scionproto/scion/pkg/experimental/epic"
 	"github.com/scionproto/scion/pkg/log"
 	"github.com/scionproto/scion/pkg/private/serrors"
@@ -107,6 +108,7 @@ type DataPlane struct {
 }
 
 var (
+	drkeyDeriver                  = specific.Deriver{}
 	alreadySet                    = serrors.New("already set")
 	cannotRoute                   = serrors.New("cannot route, dropping pkt")
 	emptyValue                    = serrors.New("empty value")
@@ -119,6 +121,10 @@ var (
 	noBFDSessionConfigured        = serrors.New("no BFD sessions have been configured")
 	errBFDDisabled                = serrors.New("BFD is disabled")
 )
+
+type drkeyProvider interface {
+	GetSV() drkey.Key
+}
 
 type scmpError struct {
 	TypeCode slayers.SCMPTypeCode
@@ -562,7 +568,7 @@ func newPacketProcessor(d *DataPlane, ingressID uint16) *scionPacketProcessor {
 			scionInput: make([]byte, path.MACBufferSize),
 			epicInput:  make([]byte, libepic.MACBufferSize),
 		},
-		drkey: drkey.NewDeriver(),
+		drkeyProvider: &fakeProvider{},
 	}
 	p.scionLayer.RecyclePaths()
 	return p
@@ -742,7 +748,7 @@ type scionPacketProcessor struct {
 	// mac is the hasher for the MAC computation.
 	mac hash.Hash
 	// DRKey key derivation for SCMP authentication
-	drkey drkey.Deriver
+	drkeyProvider drkeyProvider
 
 	// scionLayer is the SCION gopacket layer.
 	scionLayer slayers.SCION
@@ -1577,8 +1583,7 @@ func (p *scionPacketProcessor) getSPAO(scmpH *slayers.SCMP) (
 	drkey.Key,
 	error,
 ) {
-	sv := (&drkey.Provider{}).GetSV()
-	now := time.Now()
+	sv := p.drkeyProvider.GetSV()
 	macBuf := make([]byte, 16)
 	// XXX(JordiSubira): at the moment, for creating SCMP responses we use sender side.
 	// We assume the current epoch at the moment
@@ -1600,44 +1605,31 @@ func (p *scionPacketProcessor) getSPAO(scmpH *slayers.SCMP) (
 	// XXX(JordiSubira): Assume that send rate is low so that combination
 	// with timestamp is always unique
 	sn := uint32(0)
-
 	optAuth := slayers.NewPacketAuthOption(spi, slayers.PacketAuthCMAC, timestamp, sn, macBuf)
 
-	metaLvl1 := drkey.Lvl1Meta{
-		Validity: now,
-		ProtoId:  drkey.SCMP,
-		SrcIA:    p.d.localIA,
-		DstIA:    p.scionLayer.SrcIA,
-	}
 	dstA, err := p.scionLayer.SrcAddr()
 	if err != nil {
 		return slayers.PacketAuthOption{},
 			drkey.Key{}, serrors.Wrap(cannotRoute, err, "details", "extracting src addr")
 	}
-	lvl1, err := p.drkey.DeriveLvl1(metaLvl1, sv)
+	lvl1, err := drkeyDeriver.DeriveLevel1(p.scionLayer.SrcIA, sv)
 	if err != nil {
 		return slayers.PacketAuthOption{}, drkey.Key{}, err
 	}
 	if drkeyType == slayers.PacketAuthASHost {
 
-		metaASHost := drkey.ASHostMeta{
-			DstHost: dstA.String(),
-		}
-		key, err := p.drkey.DeriveASHost(metaASHost, lvl1)
+		key, err := drkeyDeriver.DeriveASHost(dstA.String(), lvl1)
 		if err != nil {
 			return slayers.PacketAuthOption{}, drkey.Key{}, err
 		}
 		return optAuth, key, nil
 	}
 	localAddr := &net.IPAddr{IP: p.d.internalIP}
-	metaHostAS := drkey.HostASMeta{
-		SrcHost: localAddr.String(),
-	}
-	hostAS, err := p.drkey.DeriveHostAS(metaHostAS, lvl1)
+	hostAS, err := drkeyDeriver.DeriveHostAS(localAddr.String(), lvl1)
 	if err != nil {
 		return slayers.PacketAuthOption{}, drkey.Key{}, err
 	}
-	key, err := p.drkey.DeriveHostToHost(dstA.String(), hostAS)
+	key, err := drkeyDeriver.DeriveHostHost(dstA.String(), hostAS)
 	if err != nil {
 		return slayers.PacketAuthOption{}, drkey.Key{}, err
 	}
@@ -1728,4 +1720,10 @@ func serviceMetricLabels(localIA addr.IA, svc addr.HostSVC) prometheus.Labels {
 		"isd_as":  localIA.String(),
 		"service": svc.BaseString(),
 	}
+}
+
+type fakeProvider struct{}
+
+func (p *fakeProvider) GetSV() drkey.Key {
+	return drkey.Key{}
 }
