@@ -106,9 +106,6 @@ func (o *ServiceClientOperator) ColibriClient(
 	rawPath slayerspath.Path,
 ) (
 	colpb.ColibriServiceClient, error) {
-	// XXX(JordiSubira): We pass egressID because E2ESetupRequest travel hop-by-hop
-	// path in peer address does not contain the complete path. To be changed, once
-	// E2ERequest are adapted
 
 	// egressID := transp.Steps[transp.CurrentStep].Egress
 	rAddr, ok := o.neighborAddr(egressID)
@@ -124,7 +121,7 @@ func (o *ServiceClientOperator) ColibriClient(
 	// prepare remote address with the new path
 	switch rawPath.Type() {
 	case scion.PathType: // don't touch the service path
-		rAddr.Path = snetpath.SCION{Raw: buf}
+		//rAddr.Path = snetpath.SCION{Raw: buf}
 	case colibri.PathType:
 		rAddr.Path = snetpath.Colibri{Raw: buf}
 	default:

@@ -41,8 +41,8 @@ type SetupReq struct {
 	ReverseTraveling bool             // a down rsv traveling to the core to be re-requested
 	Reservation      *Reservation     // nil if no reservation yet
 	Steps            base.PathSteps   // retrieved from pb request (except at source)
+	CurrentStep      int              // recovered from pb request (except at source)
 	RawPath          slayerspath.Path // recovered from dataplane (except at source)
-	CurrentStep      int              // recovered from dataplane (except at source)
 }
 
 func (r *SetupReq) Validate() error {
@@ -82,7 +82,6 @@ func (r *SetupReq) Validate() error {
 			"dataplane", base.IngressFromDataPlanePath(r.RawPath),
 			"ingress", r.Ingress)
 	}
-
 	return nil
 }
 
@@ -115,11 +114,10 @@ func (r *SetupReq) Len() int {
 }
 
 func (r *SetupReq) Serialize(buff []byte, options base.SerializeOptions) {
+	r.Request.Serialize(buff[:], options)
 	offset := r.Request.Len()
-	r.Request.Serialize(buff[:offset], options)
-
+	r.Steps.Serialize(buff[offset:])
 	offset += r.Steps.Size()
-	r.Steps.Serialize(buff[:offset])
 
 	binary.BigEndian.PutUint32(buff[offset:], util.TimeToSecs(r.ExpirationTime))
 	offset += 4
