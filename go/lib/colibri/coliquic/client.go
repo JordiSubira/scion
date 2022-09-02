@@ -103,33 +103,37 @@ func (o *ServiceClientOperator) DialSvcCOL(ctx context.Context, dst *addr.IA) (
 func (o *ServiceClientOperator) ColibriClient(
 	ctx context.Context,
 	egressID uint16,
+	targetIA addr.IA,
 	rawPath slayerspath.Path,
-) (
-	colpb.ColibriServiceClient, error) {
+) (colpb.ColibriServiceClient, error) {
 
 	// egressID := transp.Steps[transp.CurrentStep].Egress
-	rAddr, ok := o.neighborAddr(egressID)
-	if !ok {
-		return nil, serrors.New("client operator not yet initialized for this egress ID",
-			"egress_id", egressID, "neighbor_count", len(o.neighbors))
-	}
-	rAddr = rAddr.Copy() // preserve the original data
-
-	buf := make([]byte, rawPath.Len())
-	rawPath.SerializeTo(buf)
+	var rAddr *snet.UDPAddr
 
 	// prepare remote address with the new path
 	switch rawPath.Type() {
 	case scion.PathType: // don't touch the service path
-		//rAddr.Path = snetpath.SCION{Raw: buf}
+		var ok bool
+		rAddr, ok = o.neighborAddr(egressID)
+		if !ok {
+			return nil, serrors.New("client operator not yet initialized for this egress ID",
+				"egress_id", egressID, "neighbor_count", len(o.neighbors))
+		}
 	case colibri.PathType:
+		var err error
+		rAddr, err = o.resolveAddr(&targetIA)
+		if err != nil {
+			return nil, err
+		}
+		buf := make([]byte, rawPath.Len())
+		rawPath.SerializeTo(buf)
 		rAddr.Path = snetpath.Colibri{Raw: buf}
 	default:
 		// Do nothing when e.g. empty path for E2EReservations
 		// E2EReservations must eventually travel through colibri path
 		// In that case they will follow same logic as above
 	}
-
+	log.FromCtx(ctx).Debug("XXXJ", "raddr", rAddr)
 	conn, err := o.connDialer.Dial(ctx, rAddr)
 	if err != nil {
 		log.Debug("error dialing a grpc connection", "addr", rAddr, "err", err)

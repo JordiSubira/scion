@@ -525,7 +525,7 @@ func (s *Store) ConfirmSegmentReservation(
 		}
 
 		// forward to next colibri service
-		client, err := s.operator.ColibriClient(ctx, egress, rawPath)
+		client, err := s.operator.ColibriClient(ctx, egress, steps.DstIA(), rawPath)
 		if err != nil {
 			return failedResponse, s.errWrapStr("while finding a colibri service client", err)
 		}
@@ -661,7 +661,7 @@ func (s *Store) ActivateSegmentReservation(
 		return nil, serrors.WrapStr("computing in transit seg. authenticator", err)
 	}
 	// forward to next colibri service
-	client, err := s.operator.ColibriClient(ctx, egress, rawPath)
+	client, err := s.operator.ColibriClient(ctx, egress, steps.DstIA(), rawPath)
 	if err != nil {
 		return failedResponse, s.errWrapStr("while finding a colibri service client", err)
 	}
@@ -779,7 +779,7 @@ func (s *Store) CleanupSegmentReservation(
 		return nil, serrors.WrapStr("computing in transit seg. authenticator", err)
 	}
 	// forward to next colibri service
-	client, err := s.operator.ColibriClient(ctx, egress, rawPath)
+	client, err := s.operator.ColibriClient(ctx, egress, steps.DstIA(), rawPath)
 	if err != nil {
 		return failedResponse, s.errWrapStr("while finding a colibri service client", err)
 	}
@@ -895,7 +895,7 @@ func (s *Store) TearDownSegmentReservation(
 		return nil, serrors.WrapStr("computing in transit seg. authenticator", err)
 	}
 	// forward to next colibri service
-	client, err := s.operator.ColibriClient(ctx, egress, rawPath)
+	client, err := s.operator.ColibriClient(ctx, egress, steps.DstIA(), rawPath)
 	if err != nil {
 		return failedResponse, s.errWrapStr("while finding a colibri service client", err)
 	}
@@ -1085,6 +1085,7 @@ func (s *Store) AdmitE2EReservation(
 	}
 
 	var ingress, egress uint16
+	var dstIA addr.IA
 	if req.IsLastAS() {
 		var notAdmittedMsg string
 		if admitted {
@@ -1127,10 +1128,10 @@ func (s *Store) AdmitE2EReservation(
 		if err != nil {
 			return nil, err
 		}
-		if err := checkIngressE2E(r, rawPath, req.Steps[req.CurrentStep]); err != nil {
+		if err := checkIngressE2E(r, req.Steps[req.CurrentStep]); err != nil {
 			return nil, err
 		}
-		if err := checkEgressE2E(r, rawPath, req.Steps[req.CurrentStep]); err != nil {
+		if err := checkEgressE2E(r, req.Steps[req.CurrentStep]); err != nil {
 			return nil, err
 		}
 		ingress = base.IngressFromDataPlanePath(rawPath)
@@ -1153,15 +1154,16 @@ func (s *Store) AdmitE2EReservation(
 			// Check that dataplane ingress corresponds to Steps ingress and
 			// rsv.SegmentCurrentStep ingress. In the source AS all values
 			// should be 0.
-			if err := checkIngressE2E(r, rawPath, req.Steps[req.CurrentStep]); err != nil {
+			if err := checkIngressE2E(r, req.Steps[req.CurrentStep]); err != nil {
 				return nil, err
 			}
-			if err := checkEgressE2E(r, rawPath, req.Steps[req.CurrentStep]); err != nil {
+			if err := checkEgressE2E(r, req.Steps[req.CurrentStep]); err != nil {
 				return nil, err
 			}
 
 			ingress = base.IngressFromDataPlanePath(rawPath)
 			egress = base.EgressFromDataPlanePath(rawPath)
+			dstIA = r.Steps.DstIA()
 
 		} else if isTransfer {
 			rIncoming, err := tx.GetSegmentRsvFromID(
@@ -1173,7 +1175,7 @@ func (s *Store) AdmitE2EReservation(
 			}
 			// Check that dataplane ingress corresponds to Steps ingress and
 			// rsv.SegmentCurrentStep ingress, for the incoming segment.
-			if err := checkIngressE2E(rIncoming, rawPath, req.Steps[req.CurrentStep]); err != nil {
+			if err := checkIngressE2E(rIncoming, req.Steps[req.CurrentStep]); err != nil {
 				return nil, err
 			}
 
@@ -1190,7 +1192,7 @@ func (s *Store) AdmitE2EReservation(
 			}
 			// Check that dataplane egress corresponds to Steps ingress and
 			// rsv.SegmentCurrentStep egress, for the next segment.
-			if err := checkEgressE2E(rNext, newRawPath, req.Steps[req.CurrentStep]); err != nil {
+			if err := checkEgressE2E(rNext, req.Steps[req.CurrentStep]); err != nil {
 				return nil, err
 			}
 			// Update egress
@@ -1198,12 +1200,13 @@ func (s *Store) AdmitE2EReservation(
 			egress = base.EgressFromDataPlanePath(newRawPath)
 
 			rawPath = newRawPath
+			dstIA = rNext.Steps.DstIA()
 		}
 		if err := s.authenticator.ComputeE2ESetupRequestTransitMAC(ctx, req); err != nil {
 			return nil, serrors.WrapStr("computing in transit e2e setup request authenticator", err)
 		}
 		// authenticate request for the destination AS
-		client, err := s.operator.ColibriClient(ctx, egress, rawPath)
+		client, err := s.operator.ColibriClient(ctx, egress, dstIA, rawPath)
 		if err != nil {
 			return nil, serrors.WrapStr("while finding a colibri service client", err)
 		}
@@ -1335,10 +1338,10 @@ func (s *Store) CleanupE2EReservation(
 			// Check that dataplane ingress corresponds to Steps ingress and
 			// rsv.SegmentCurrentStep ingress. In the source AS all values
 			// should be 0.
-			if err := checkIngressE2E(r, rawPath, req.Steps[req.CurrentStep]); err != nil {
+			if err := checkIngressE2E(r, req.Steps[req.CurrentStep]); err != nil {
 				return nil, err
 			}
-			if err := checkEgressE2E(r, rawPath, req.Steps[req.CurrentStep]); err != nil {
+			if err := checkEgressE2E(r, req.Steps[req.CurrentStep]); err != nil {
 				return nil, err
 			}
 		} else {
@@ -1348,7 +1351,7 @@ func (s *Store) CleanupE2EReservation(
 			}
 			// Check that dataplane ingress corresponds to Steps ingress and
 			// rsv.SegmentCurrentStep ingress, for the incoming segment.
-			if err := checkIngressE2E(rIncoming, rawPath, req.Steps[req.CurrentStep]); err != nil {
+			if err := checkIngressE2E(rIncoming, req.Steps[req.CurrentStep]); err != nil {
 				return nil, err
 			}
 
@@ -1363,7 +1366,7 @@ func (s *Store) CleanupE2EReservation(
 			}
 			// Check that dataplane egress corresponds to Steps ingress and
 			// rsv.SegmentCurrentStep egress, for the next segment.
-			if err := checkEgressE2E(r, rawPath, req.Steps[req.CurrentStep]); err != nil {
+			if err := checkEgressE2E(r, req.Steps[req.CurrentStep]); err != nil {
 				return nil, err
 			}
 		}
@@ -1372,10 +1375,10 @@ func (s *Store) CleanupE2EReservation(
 		if err != nil {
 			return nil, err
 		}
-		if err := checkIngressE2E(r, rawPath, req.Steps[req.CurrentStep]); err != nil {
+		if err := checkIngressE2E(r, req.Steps[req.CurrentStep]); err != nil {
 			return nil, err
 		}
-		if err := checkEgressE2E(r, rawPath, req.Steps[req.CurrentStep]); err != nil {
+		if err := checkEgressE2E(r, req.Steps[req.CurrentStep]); err != nil {
 			return nil, err
 		}
 	}
@@ -1426,7 +1429,7 @@ func (s *Store) CleanupE2EReservation(
 		return nil, serrors.WrapStr("computing in transit e2e base request authenticator", err)
 	}
 	// forward to next colibri service
-	client, err := s.operator.ColibriClient(ctx, r.Egress, rawPath)
+	client, err := s.operator.ColibriClient(ctx, r.Egress, r.Steps.DstIA(), rawPath)
 	if err != nil {
 		return failedResponse, s.errWrapStr("while finding a colibri service client", err)
 	}
@@ -1502,7 +1505,7 @@ func (s *Store) authenticateSegSetupReq(ctx context.Context, req *segment.SetupR
 	return nil
 }
 
-func checkIngressE2E(rsv *segment.Reservation, rawPath slayerspath.Path, step base.PathStep) error {
+func checkIngressE2E(rsv *segment.Reservation, step base.PathStep) error {
 	var rawPathFromRsv slayerspath.Path
 	if rsv.PathType == reservation.DownPath {
 		rawPathFromRsv = rsv.DeriveColibriPathAtDestination()
@@ -1510,21 +1513,15 @@ func checkIngressE2E(rsv *segment.Reservation, rawPath slayerspath.Path, step ba
 		rawPathFromRsv = rsv.DeriveColibriPathAtSource()
 	}
 
-	if base.IngressFromDataPlanePath(rawPath) != base.IngressFromDataPlanePath(rawPathFromRsv) {
-		return serrors.New("Ingress from dataplane and from segment reservation do not match",
-			"dp ingress", base.IngressFromDataPlanePath(rawPath),
-			"segRsv ingress", base.IngressFromDataPlanePath(rawPathFromRsv))
-	}
-
-	if base.IngressFromDataPlanePath(rawPath) != step.Ingress {
+	if base.IngressFromDataPlanePath(rawPathFromRsv) != step.Ingress {
 		return serrors.New("Ingress from dataplane and from message steps do not match",
-			"dp ingress", base.IngressFromDataPlanePath(rawPath),
+			"dp ingress", base.IngressFromDataPlanePath(rawPathFromRsv),
 			"message ingress", step.Ingress)
 	}
 	return nil
 }
 
-func checkEgressE2E(rsv *segment.Reservation, rawPath slayerspath.Path, step base.PathStep) error {
+func checkEgressE2E(rsv *segment.Reservation, step base.PathStep) error {
 	var rawPathFromRsv slayerspath.Path
 	if rsv.PathType == reservation.DownPath {
 		rawPathFromRsv = rsv.DeriveColibriPathAtDestination()
@@ -1532,16 +1529,10 @@ func checkEgressE2E(rsv *segment.Reservation, rawPath slayerspath.Path, step bas
 		rawPathFromRsv = rsv.DeriveColibriPathAtSource()
 	}
 
-	if base.EgressFromDataPlanePath(rawPath) != base.EgressFromDataPlanePath(rawPathFromRsv) {
-		return serrors.New("Egress from dataplane and from segment reservation do not match",
-			"dp egress", base.EgressFromDataPlanePath(rawPath),
-			"segRsv egress", base.EgressFromDataPlanePath(rawPathFromRsv))
-	}
-
-	if base.EgressFromDataPlanePath(rawPath) != step.Egress {
-		return serrors.New("Egress from dataplane and from message steps do not match",
-			"dp egress", base.EgressFromDataPlanePath(rawPath),
-			"message egress", step.Egress)
+	if base.EgressFromDataPlanePath(rawPathFromRsv) != step.Egress {
+		return serrors.New("Ingress from dataplane and from message steps do not match",
+			"dp ingress", base.EgressFromDataPlanePath(rawPathFromRsv),
+			"message ingress", step.Egress)
 	}
 	return nil
 }
@@ -1738,7 +1729,7 @@ func (s *Store) getTokenFromDownstreamAdmission(
 		return nil, serrors.WrapStr("computing in transit seg. setup authenticator", err)
 	}
 
-	client, err := s.operator.ColibriClient(ctx, req.Egress(), rawPath)
+	client, err := s.operator.ColibriClient(ctx, req.Egress(), req.Steps.DstIA(), rawPath)
 	if err != nil {
 		log.Debug("error finding a colibri service client", "err", err)
 		return nil, serrors.WrapStr("while finding a colibri service client", err)
@@ -1788,7 +1779,7 @@ func (s *Store) sendUpstreamForAdmission(
 		return s.admitSegmentReservation(ctx, req, revPath)
 	}
 	// forward to next colibri service upstream
-	client, err := s.operator.ColibriClient(ctx, req.Egress(), rawPath)
+	client, err := s.operator.ColibriClient(ctx, req.Egress(), req.Steps.DstIA(), rawPath)
 	if err != nil {
 		return failedResponse, s.errWrapStr("while finding a colibri service client", err)
 	}
