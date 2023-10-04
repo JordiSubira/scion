@@ -30,13 +30,8 @@ go.mod:
 	bazel run --config=quiet @go_sdk//:bin/go -- mod tidy
 
 go_deps.bzl: go.mod
-<<<<<<< HEAD
-	@# gazelle is run with "-args"; so our arguments are added to those from the gazelle() rule.
-	bazel run --config=quiet //:gazelle -- update-repos -prune -from_file=go.mod -to_macro=go_deps.bzl%go_deps
-=======
 	@# gazelle is run with "-args"; so our arguments are added to those from the gazelle() rule. 
 	bazel run --verbose_failures --config=quiet //:gazelle_update_repos -- -args -prune -from_file=go.mod -to_macro=go_deps.bzl%go_deps
->>>>>>> 4096d879b (build: support fedora (#4371))
 	@# XXX(matzf): clean up; gazelle update-repose inconsistently inserts blank lines (see bazelbuild/bazel-gazelle#1088).
 	@sed -e '/def go_deps/,$${/^$$/d}' -i go_deps.bzl
 
